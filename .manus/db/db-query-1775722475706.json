@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `employee_master` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`employeeId` varchar(50) NOT NULL,\n\t`name` varchar(255) NOT NULL,\n\t`status` enum('active','inactive') NOT NULL DEFAULT 'active',\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `employee_master_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `employee_master_employeeId_unique` UNIQUE(`employeeId`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2UMMqFNybV2fKqf.203f2eefe216 --database Mq4ggc8y5gB9HLsrEgHcYA --execute CREATE TABLE `employee_master` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`employeeId` varchar(50) NOT NULL,\n\t`name` varchar(255) NOT NULL,\n\t`status` enum('active','inactive') NOT NULL DEFAULT 'active',\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `employee_master_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `employee_master_employeeId_unique` UNIQUE(`employeeId`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2358
+}

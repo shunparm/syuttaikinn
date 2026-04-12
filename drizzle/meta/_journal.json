@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1775721623790,
+      "tag": "0000_glorious_venus",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1775722430406,
+      "tag": "0001_ancient_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1775800000000,
+      "tag": "0002_dazzling_joystick",
+      "breakpoints": true
+    }
+  ]
+}

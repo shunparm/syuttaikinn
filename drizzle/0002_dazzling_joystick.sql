@@ -1,0 +1,2 @@
+ALTER TABLE `correction_requests` MODIFY COLUMN `correctionType` enum('time_correction','cancel','site_change','other') NOT NULL;--> statement-breakpoint
+ALTER TABLE `employee_master` ADD `pin` varchar(10);
