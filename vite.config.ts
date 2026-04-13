@@ -18,7 +18,8 @@ export default defineConfig({
         theme_color: "#ea580c",
         background_color: "#ffffff",
         display: "standalone",
-        start_url: "/clock-in",
+        start_url: "/",
+        scope: "/",
         orientation: "portrait",
         icons: [
           {
