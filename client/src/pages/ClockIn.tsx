@@ -92,7 +92,7 @@ export default function ClockIn() {
             </span>
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent key={step} className="space-y-4">
 
           {/* ステップ1: 作業員選択 */}
           {step === "select-employee" && (
@@ -217,10 +217,6 @@ export default function ClockIn() {
       {/* 成功アニメーションオーバーレイ */}
       {showAnim && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <style>{`
-            @keyframes drawCheck { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
-            @keyframes scaleIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-          `}</style>
           <div className="bg-white rounded-2xl px-12 py-10 flex flex-col items-center gap-4 shadow-2xl">
             <div className="relative flex items-center justify-center">
               <span className="absolute inline-flex h-28 w-28 rounded-full bg-emerald-400 opacity-20 animate-ping" />
