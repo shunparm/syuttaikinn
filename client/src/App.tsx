@@ -37,14 +37,15 @@ function Router() {
       <Route path="/clock-in">{() => <PublicPinLayout><ClockIn /></PublicPinLayout>}</Route>
       <Route path="/clock-out">{() => <PublicPinLayout><ClockOut /></PublicPinLayout>}</Route>
       <Route path="/correction">{() => <PublicPinLayout><Correction /></PublicPinLayout>}</Route>
-      {/* その他のページ: Manusログイン必須 */}
+      {/* 認証不要ページ */}
+      <Route path="/">{() => <PublicPinLayout><Home /></PublicPinLayout>}</Route>
+      <Route path="/records">{() => <PublicPinLayout><Records /></PublicPinLayout>}</Route>
+      {/* その他のページ: ログイン必須 */}
       <Route>
         {() => (
           <DashboardLayout>
             <Switch>
-              <Route path="/" component={Home} />
               <Route path="/active-workers" component={ActiveWorkers} />
-              <Route path="/records" component={Records} />
               <Route path="/export" component={Export} />
               <Route path="/admin/employees" component={AdminEmployees} />
               <Route path="/admin/sites" component={AdminSites} />

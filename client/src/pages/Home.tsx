@@ -78,7 +78,7 @@ export default function Home() {
           value={isLoading ? "..." : (stats?.activeWorkers ?? 0)}
           icon={HardHat}
           description="現在出勤中の作業員"
-          color="bg-emerald-100 text-emerald-600"
+          color="bg-amber-50 text-amber-500"
           onClick={() => setLocation("/active-workers")}
         />
         <StatCard
@@ -86,7 +86,7 @@ export default function Home() {
           value={isLoading ? "..." : (stats?.todayAttendance ?? 0)}
           icon={TrendingUp}
           description="本日の出勤記録数"
-          color="bg-blue-100 text-blue-600"
+          color="bg-sky-50 text-sky-500"
           onClick={() => setLocation("/records")}
         />
         <StatCard
@@ -183,8 +183,8 @@ export default function Home() {
           onClick={() => setLocation("/clock-in")}
         >
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-orange-100 group-hover:bg-orange-200 transition-colors">
-              <Clock className="h-6 w-6 text-orange-500" />
+            <div className="p-3 rounded-xl bg-sky-50 group-hover:bg-sky-100 transition-colors">
+              <Clock className="h-6 w-6 text-sky-500" />
             </div>
             <div>
               <p className="font-semibold text-foreground">出勤申請</p>
@@ -197,8 +197,8 @@ export default function Home() {
           onClick={() => setLocation("/clock-out")}
         >
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-red-100 group-hover:bg-red-200 transition-colors">
-              <HardHat className="h-6 w-6 text-red-600" />
+            <div className="p-3 rounded-xl bg-red-50 group-hover:bg-red-100 transition-colors">
+              <HardHat className="h-6 w-6 text-red-500" />
             </div>
             <div>
               <p className="font-semibold text-foreground">退勤申請</p>

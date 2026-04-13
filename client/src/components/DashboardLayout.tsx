@@ -55,11 +55,11 @@ const workerMenuItems = [
 ];
 
 const adminMenuItems = [
-  { icon: Users, label: "作業員管理", path: "/admin/employees", iconColor: "text-blue-500" },
-  { icon: Building2, label: "現場管理", path: "/admin/sites", iconColor: "text-teal-500" },
-  { icon: Shield, label: "訂正申請管理", path: "/admin/corrections", iconColor: "text-rose-500" },
-  { icon: Download, label: "CSV出力", path: "/export", iconColor: "text-green-500" },
-  { icon: UserCog, label: "ユーザー管理", path: "/admin/users", iconColor: "text-purple-500" },
+  { icon: Users, label: "作業員管理", path: "/admin/employees" },
+  { icon: Building2, label: "現場管理", path: "/admin/sites" },
+  { icon: Shield, label: "訂正申請管理", path: "/admin/corrections" },
+  { icon: Download, label: "CSV出力", path: "/export" },
+  { icon: UserCog, label: "ユーザー管理", path: "/admin/users" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
