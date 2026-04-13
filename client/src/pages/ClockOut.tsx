@@ -59,6 +59,39 @@ export default function ClockOut() {
     return h > 0 ? `${h}時間${m}分` : `${m}分`;
   };
 
+  // ─── 成功画面（ページ全体を差し替え） ────────────────────────────────────────
+  if (showAnim) {
+    return (
+      <div className="max-w-lg mx-auto">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-10 text-center">
+            <div className="flex justify-center mb-6">
+              <div className="relative flex items-center justify-center">
+                <span className="absolute inline-flex h-28 w-28 rounded-full bg-red-400 opacity-20 animate-ping" />
+                <div
+                  className="relative p-5 rounded-full bg-red-100"
+                  style={{ animation: "scaleIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards" }}
+                >
+                  <svg className="h-16 w-16 text-red-600" viewBox="0 0 52 52" fill="none">
+                    <circle cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.2" />
+                    <path
+                      d="M14 26 L22 34 L38 18"
+                      stroke="currentColor" strokeWidth="3"
+                      strokeLinecap="round" strokeLinejoin="round" fill="none"
+                      style={{ strokeDasharray: 40, strokeDashoffset: 0, animation: "drawCheck 0.5s ease-out 0.3s both" }}
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-gray-800">退勤を記録しました</p>
+            <p className="text-sm text-gray-500 mt-2">本日もおつかれさまでした！</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const steps = [
     { key: "select-employee", label: "作業員選択" },
     { key: "clock-out-form", label: "退勤入力" },
@@ -66,7 +99,7 @@ export default function ClockOut() {
   const currentStepIndex = steps.findIndex((s) => s.key === step);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6" translate="no">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <HardHat className="h-6 w-6 text-amber-600" />
@@ -226,10 +259,6 @@ export default function ClockOut() {
                 />
               </div>
 
-              {errorMsg && (
-                <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{errorMsg}</p>
-              )}
-
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1 h-11" onClick={() => setStep("select-employee")}>
                   <ChevronLeft className="h-4 w-4 mr-1" /> 戻る
@@ -252,38 +281,15 @@ export default function ClockOut() {
                   )}
                 </Button>
               </div>
+
+              {errorMsg && (
+                <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{errorMsg}</p>
+              )}
             </>
           )}
 
         </CardContent>
       </Card>
-
-      {/* 成功アニメーションオーバーレイ */}
-      {showAnim && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl px-12 py-10 flex flex-col items-center gap-4 shadow-2xl">
-            <div className="relative flex items-center justify-center">
-              <span className="absolute inline-flex h-28 w-28 rounded-full bg-red-400 opacity-20 animate-ping" />
-              <div
-                className="relative p-5 rounded-full bg-red-100"
-                style={{ animation: "scaleIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards" }}
-              >
-                <svg className="h-16 w-16 text-red-600" viewBox="0 0 52 52" fill="none">
-                  <circle cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.2" />
-                  <path
-                    d="M14 26 L22 34 L38 18"
-                    stroke="currentColor" strokeWidth="3"
-                    strokeLinecap="round" strokeLinejoin="round" fill="none"
-                    style={{ strokeDasharray: 40, strokeDashoffset: 0, animation: "drawCheck 0.5s ease-out 0.3s both" }}
-                  />
-                </svg>
-              </div>
-            </div>
-            <p className="text-lg font-bold text-gray-800">退勤を記録しました</p>
-            <p className="text-sm text-gray-500">本日もおつかれさまでした！</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
