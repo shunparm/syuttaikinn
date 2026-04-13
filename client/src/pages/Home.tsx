@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Building2, Clock, HardHat, LogIn, LogOut, TrendingUp, Users } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useLang } from "@/hooks/useLang";
 
 function StatCard({
   title,
@@ -47,6 +48,7 @@ export default function Home() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
+  const { lang, toggle, t } = useLang();
   const { data: stats, isLoading } = trpc.attendance.getDashboardStats.useQuery();
   const { data: activeWorkers } = trpc.attendance.getActiveWorkers.useQuery();
 
@@ -69,14 +71,24 @@ export default function Home() {
             className="flex flex-col items-center justify-center gap-2 h-28 rounded-2xl bg-sky-500 hover:bg-sky-600 active:bg-sky-700 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100 text-white"
           >
             <LogIn className="h-10 w-10" />
-            <span className="text-xl font-bold">出勤</span>
+            <span className="text-xl font-bold">{t("出勤", "Pergi kerja")}</span>
           </button>
           <button
             onClick={() => setLocation("/clock-out")}
             className="flex flex-col items-center justify-center gap-2 h-28 rounded-2xl bg-red-500 hover:bg-red-600 active:bg-red-700 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100 text-white"
           >
             <LogOut className="h-10 w-10" />
-            <span className="text-xl font-bold">退勤</span>
+            <span className="text-xl font-bold">{t("退勤", "Pulang kerja")}</span>
+          </button>
+        </div>
+      )}
+      {isMobile && (
+        <div className="flex justify-end -mt-1">
+          <button
+            onClick={toggle}
+            className="text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-white shadow-sm"
+          >
+            {lang === "ja" ? "🇮🇩 Indonesia" : "🇯🇵 日本語"}
           </button>
         </div>
       )}

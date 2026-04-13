@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HardHat, Clock, MapPin, FileText, Users, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useLang } from "@/hooks/useLang";
 
 type Step = "select-employee" | "clock-out-form";
 
@@ -21,10 +22,19 @@ export default function ClockOut() {
   const [clockInTimeForCalc, setClockInTimeForCalc] = useState<string | null>(null);
 
   const isMobile = useIsMobile();
+  const { lang, toggle, t } = useLang();
 
   const { data: activeWorkers, isLoading } = trpc.attendance.getActiveWorkers.useQuery();
   const { data: employees } = trpc.master.listEmployees.useQuery();
   const utils = trpc.useUtils();
+
+  const displayName = (emp: { name: string; nameKana?: string | null }) =>
+    lang === "id" && emp.nameKana ? emp.nameKana : emp.name;
+
+  const workerDisplayName = (employeeDbId: number, fallback: string) => {
+    const emp = employees?.find((e) => e.id === employeeDbId);
+    return displayName({ name: fallback, nameKana: emp?.nameKana });
+  };
 
   const clockOutMutation = trpc.attendance.clockOut.useMutation({
     onSuccess: () => {
@@ -106,13 +116,13 @@ export default function ClockOut() {
                 </div>
               </div>
             </div>
-            <p className="text-lg font-bold text-gray-800">退勤を記録しました</p>
-            <p className="text-sm text-gray-500 mt-2">本日もお疲れさまでした！</p>
+            <p className="text-lg font-bold text-gray-800">{t("退勤を記録しました", "Kepulangan telah dicatat")}</p>
+            <p className="text-sm text-gray-500 mt-2">{t("本日もお疲れさまでした！", "Terima kasih atas kerja kerasnya!")}</p>
             {clockOutTime && (
-              <p className="text-sm text-gray-400 mt-1">退勤時刻：{clockOutTime}</p>
+              <p className="text-sm text-gray-400 mt-1">{t("退勤時刻：", "Waktu pulang：")}{clockOutTime}</p>
             )}
             {clockInTimeForCalc && (
-              <p className="text-sm text-gray-400 mt-1">勤務時間：{formatWorkingTime(clockInTimeForCalc)}</p>
+              <p className="text-sm text-gray-400 mt-1">{t("勤務時間：", "Durasi kerja：")}{formatWorkingTime(clockInTimeForCalc)}</p>
             )}
           </CardContent>
         </Card>
@@ -121,19 +131,29 @@ export default function ClockOut() {
   }
 
   const steps = [
-    { key: "select-employee", label: "作業員選択" },
+    { key: "select-employee", label: t("作業員選択", "Pilih Pekerja") },
     { key: "clock-out-form", label: "退勤入力" },
   ];
   const currentStepIndex = steps.findIndex((s) => s.key === step);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6" translate="no">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <HardHat className="h-6 w-6 text-red-500" />
-          退勤
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">稼働中の作業員を選択して退勤を記録してください</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <HardHat className="h-6 w-6 text-red-500" />
+            {t("退勤", "Pulang kerja")}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("稼働中の作業員を選択して退勤を記録してください", "Pilih pekerja untuk mencatat kepulangan")}</p>
+        </div>
+        {isMobile && (
+          <button
+            onClick={toggle}
+            className="text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-white shadow-sm"
+          >
+            {lang === "ja" ? "🇮🇩 Indonesia" : "🇯🇵 日本語"}
+          </button>
+        )}
       </div>
 
       {/* ステップインジケーター */}
@@ -156,7 +176,7 @@ export default function ClockOut() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-base">
-            {step === "select-employee" ? "① 退勤する作業員を選択" : "② 退勤情報を入力"}
+            {step === "select-employee" ? t("① 退勤する作業員を選択", "① Pilih Pekerja yang Pulang") : "② 退勤情報を入力"}
           </CardTitle>
           <CardDescription>
             現在時刻:{" "}
@@ -189,7 +209,7 @@ export default function ClockOut() {
                       }`}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm">{worker.employeeName}</p>
+                        <p className="font-semibold text-sm">{workerDisplayName(worker.employeeId, worker.employeeName)}</p>
                         <div className="flex items-center gap-3 mt-0.5">
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <MapPin className="h-3 w-3" />{worker.siteName}
@@ -216,7 +236,7 @@ export default function ClockOut() {
                   onClick={() => { if (selectedRecordId) { setStep("clock-out-form"); setWorkReport(""); setCompanionIds([]); } }}
                   disabled={!selectedRecordId}
                 >
-                  次へ <ChevronRight className="h-5 w-5 ml-1" />
+                  {t("次へ", "Berikutnya")} <ChevronRight className="h-5 w-5 ml-1" />
                 </Button>
               )}
             </>
@@ -228,7 +248,9 @@ export default function ClockOut() {
               <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg">
                 <HardHat className="h-5 w-5 text-muted-foreground shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold">{selectedWorker?.employeeName}</p>
+                  <p className="text-sm font-semibold">
+                    {selectedWorker ? workerDisplayName(selectedWorker.employeeId, selectedWorker.employeeName) : ""}
+                  </p>
                   <p className="text-xs text-muted-foreground flex items-center gap-2">
                     <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedWorker?.siteName}</span>
                     {selectedWorker && (
@@ -263,7 +285,7 @@ export default function ClockOut() {
                             }
                           />
                           <label htmlFor={`companion-${emp.id}`} className="text-sm cursor-pointer">
-                            {emp.name}
+                            {displayName(emp)}
                             <span className="text-xs text-muted-foreground ml-2">({emp.employeeId})</span>
                           </label>
                         </div>
@@ -289,7 +311,7 @@ export default function ClockOut() {
 
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1 h-11" onClick={() => setStep("select-employee")}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> 戻る
+                  <ChevronLeft className="h-4 w-4 mr-1" /> {t("戻る", "Kembali")}
                 </Button>
                 <Button
                   className={`flex-1 text-base font-semibold bg-red-500 hover:bg-red-600 text-white${isMobile ? " h-20 text-xl font-bold sticky bottom-0 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100" : " h-12"}`}
@@ -304,7 +326,7 @@ export default function ClockOut() {
                   ) : (
                     <span className="flex items-center gap-2">
                       <HardHat className="h-5 w-5" />
-                      退勤
+                      {t("退勤", "Pulang kerja")}
                     </span>
                   )}
                 </Button>

@@ -28,6 +28,7 @@ type Employee = {
   id: number;
   employeeId: string;
   name: string;
+  nameKana?: string;
   pin?: string;
   role: string;
   status: string;
@@ -41,8 +42,8 @@ export default function AdminEmployees() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
-  const [form, setForm] = useState<{ employeeId: string; name: string; pin: string; role: "worker" | "staff" | "admin"; status: "active" | "inactive" }>({
-    employeeId: "", name: "", pin: "", role: "worker", status: "active",
+  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; pin: string; role: "worker" | "staff" | "admin"; status: "active" | "inactive" }>({
+    employeeId: "", name: "", nameKana: "", pin: "", role: "worker", status: "active",
   });
 
   const { data: employees, refetch } = trpc.master.listEmployees.useQuery({ includeInactive: true });
@@ -81,7 +82,7 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", pin: "", role: "worker", status: "active" });
+    setForm({ employeeId: "", name: "", nameKana: "", pin: "", role: "worker", status: "active" });
     setDialogOpen(true);
   };
 
@@ -90,6 +91,7 @@ export default function AdminEmployees() {
     setForm({
       employeeId: emp.employeeId,
       name: emp.name,
+      nameKana: emp.nameKana ?? "",
       pin: emp.pin ?? "",
       role: (emp.role === "staff" || emp.role === "admin") ? emp.role : "worker",
       status: emp.status === "inactive" ? "inactive" : "active",
@@ -243,6 +245,18 @@ export default function AdminEmployees() {
                 placeholder="例: 山田 太郎"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                ひらがな名
+                <span className="text-xs text-muted-foreground ml-2">（インドネシア語表示時に使用）</span>
+              </Label>
+              <Input
+                placeholder="例：やまだ たろう"
+                value={form.nameKana}
+                onChange={(e) => setForm({ ...form, nameKana: e.target.value })}
                 className="h-10"
               />
             </div>

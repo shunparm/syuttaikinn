@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { Clock, HardHat, MapPin, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useLang } from "@/hooks/useLang";
 
 type Step = "select-employee" | "select-site";
 
@@ -17,10 +18,14 @@ export default function ClockIn() {
   const [recordedTime, setRecordedTime] = useState("");
 
   const isMobile = useIsMobile();
+  const { lang, toggle, t } = useLang();
 
   const { data: employees } = trpc.master.listEmployees.useQuery();
   const { data: sites } = trpc.master.listSites.useQuery();
   const utils = trpc.useUtils();
+
+  const displayName = (emp: { name: string; nameKana?: string | null }) =>
+    lang === "id" && emp.nameKana ? emp.nameKana : emp.name;
 
   const clockInMutation = trpc.attendance.clockIn.useMutation({
     onSuccess: () => {
@@ -81,10 +86,10 @@ export default function ClockIn() {
                 </div>
               </div>
             </div>
-            <p className="text-lg font-bold text-gray-800">出勤を記録しました</p>
-            <p className="text-sm text-gray-500 mt-2">本日もご安全に！</p>
+            <p className="text-lg font-bold text-gray-800">{t("出勤を記録しました", "Kehadiran telah dicatat")}</p>
+            <p className="text-sm text-gray-500 mt-2">{t("本日もご安全に！", "Selamat bekerja dengan aman!")}</p>
             {recordedTime && (
-              <p className="text-sm text-gray-400 mt-1">記録時間：{recordedTime}</p>
+              <p className="text-sm text-gray-400 mt-1">{t("記録時間：", "Waktu tercatat：")}{recordedTime}</p>
             )}
           </CardContent>
         </Card>
@@ -93,19 +98,29 @@ export default function ClockIn() {
   }
 
   const steps = [
-    { key: "select-employee", label: "作業員選択" },
-    { key: "select-site", label: "現場選択" },
+    { key: "select-employee", label: t("作業員選択", "Pilih Pekerja") },
+    { key: "select-site", label: t("現場選択", "Pilih Lokasi") },
   ];
   const currentStepIndex = steps.findIndex((s) => s.key === step);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6" translate="no">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Clock className="h-6 w-6 text-sky-500" />
-          出勤
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">作業員と現場を選択して出勤を記録してください</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Clock className="h-6 w-6 text-sky-500" />
+            {t("出勤", "Pergi kerja")}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("作業員と現場を選択して出勤を記録してください", "Pilih pekerja dan lokasi untuk mencatat kehadiran")}</p>
+        </div>
+        {isMobile && (
+          <button
+            onClick={toggle}
+            className="text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-white shadow-sm"
+          >
+            {lang === "ja" ? "🇮🇩 Indonesia" : "🇯🇵 日本語"}
+          </button>
+        )}
       </div>
 
       {/* ステップインジケーター */}
@@ -128,7 +143,7 @@ export default function ClockIn() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-base">
-            {step === "select-employee" ? "① 作業員を選択" : "② 工事現場を選択"}
+            {step === "select-employee" ? t("① 作業員を選択", "① Pilih Pekerja") : t("② 工事現場を選択", "② Pilih Lokasi Kerja")}
           </CardTitle>
           <CardDescription>
             現在時刻:{" "}
@@ -165,7 +180,7 @@ export default function ClockIn() {
                         <div className="flex items-center gap-3">
                           <HardHat className={`h-4 w-4 shrink-0 ${selectedEmployeeId === emp.id ? "text-sky-500" : "text-muted-foreground"}`} />
                           <div>
-                            <p className="text-sm font-semibold">{emp.name}</p>
+                            <p className="text-sm font-semibold">{displayName(emp)}</p>
                             <p className="text-xs text-muted-foreground">{emp.employeeId}</p>
                           </div>
                         </div>
@@ -180,7 +195,7 @@ export default function ClockIn() {
                 onClick={() => { if (selectedEmployeeId) { setStep("select-site"); setSelectedSiteId(null); } }}
                 disabled={!selectedEmployeeId}
               >
-                次へ <ChevronRight className="h-5 w-5 ml-1" />
+                {t("次へ", "Berikutnya")} <ChevronRight className="h-5 w-5 ml-1" />
               </Button>
             </>
           )}
@@ -191,7 +206,7 @@ export default function ClockIn() {
               <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg">
                 <HardHat className="h-5 w-5 text-muted-foreground shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold">{selectedEmployee?.name}</p>
+                  <p className="text-sm font-semibold">{selectedEmployee ? displayName(selectedEmployee) : ""}</p>
                   <p className="text-xs text-muted-foreground">{selectedEmployee?.employeeId}</p>
                 </div>
               </div>
@@ -233,7 +248,7 @@ export default function ClockIn() {
               )}
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1 h-11" onClick={() => setStep("select-employee")}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> 戻る
+                  <ChevronLeft className="h-4 w-4 mr-1" /> {t("戻る", "Kembali")}
                 </Button>
                 <Button
                   className={`flex-1 text-base font-semibold bg-sky-500 hover:bg-sky-600 text-white${isMobile ? " h-20 text-xl font-bold sticky bottom-0 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100" : " h-12"}`}
@@ -248,7 +263,7 @@ export default function ClockIn() {
                   ) : (
                     <span className="flex items-center gap-2">
                       <Clock className="h-5 w-5" />
-                      出勤
+                      {t("出勤", "Pergi kerja")}
                     </span>
                   )}
                 </Button>

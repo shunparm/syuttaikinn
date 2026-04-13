@@ -24,6 +24,7 @@ export const employeeMaster = pgTable("employee_master", {
   id: serial("id").primaryKey(),
   employeeId: text("employeeId").notNull().unique(),
   name: text("name").notNull(),
+  nameKana: text("nameKana"),
   pin: text("pin"),
   role: text("role").default("worker").notNull(), // 'worker' | 'staff' | 'admin'
   status: text("status").default("active").notNull(), // 'active' | 'inactive'
