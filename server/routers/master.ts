@@ -18,6 +18,7 @@ export const masterRouter = router({
     .input(z.object({
       employeeId: z.string().min(1).max(50),
       name: z.string().min(1).max(255),
+      pin: z.string().max(6).optional(),
       role: z.enum(["worker", "staff", "admin"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
     }))
@@ -33,6 +34,7 @@ export const masterRouter = router({
       id: z.number(),
       employeeId: z.string().min(1).max(50).optional(),
       name: z.string().min(1).max(255).optional(),
+      pin: z.string().max(6).optional(),
       role: z.enum(["worker", "staff", "admin"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
     }))

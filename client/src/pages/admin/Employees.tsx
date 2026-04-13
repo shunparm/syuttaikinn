@@ -28,6 +28,7 @@ type Employee = {
   id: number;
   employeeId: string;
   name: string;
+  pin?: string;
   role: string;
   status: string;
   createdAt: string;
@@ -40,8 +41,8 @@ export default function AdminEmployees() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
-  const [form, setForm] = useState<{ employeeId: string; name: string; role: "worker" | "staff" | "admin"; status: "active" | "inactive" }>({
-    employeeId: "", name: "", role: "worker", status: "active",
+  const [form, setForm] = useState<{ employeeId: string; name: string; pin: string; role: "worker" | "staff" | "admin"; status: "active" | "inactive" }>({
+    employeeId: "", name: "", pin: "", role: "worker", status: "active",
   });
 
   const { data: employees, refetch } = trpc.master.listEmployees.useQuery({ includeInactive: true });
@@ -80,7 +81,7 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", role: "worker", status: "active" });
+    setForm({ employeeId: "", name: "", pin: "", role: "worker", status: "active" });
     setDialogOpen(true);
   };
 
@@ -89,6 +90,7 @@ export default function AdminEmployees() {
     setForm({
       employeeId: emp.employeeId,
       name: emp.name,
+      pin: emp.pin ?? "",
       role: (emp.role === "staff" || emp.role === "admin") ? emp.role : "worker",
       status: emp.status === "inactive" ? "inactive" : "active",
     });
@@ -242,6 +244,19 @@ export default function AdminEmployees() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="h-10"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                PINコード <span className="text-xs text-muted-foreground">（事務・管理者のログインパスワード）</span>
+              </Label>
+              <Input
+                placeholder="4〜6桁の数字"
+                value={form.pin}
+                onChange={(e) => setForm({ ...form, pin: e.target.value })}
+                className="h-10"
+                type="password"
+                maxLength={6}
               />
             </div>
             <div className="space-y-2">
