@@ -15,6 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { FileText, Clock, MapPin, User, AlertCircle, HardHat, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { useLang } from "@/hooks/useLang";
+import { useIsMobile } from "@/hooks/useMobile";
 
 const correctionTypeLabels = {
   time_correction: "時刻の修正",
@@ -53,6 +55,12 @@ export default function Correction() {
   const [newClockOutTime, setNewClockOutTime] = useState("");
   const [saved, setSaved] = useState(false);
 
+  const { lang, toggle, t } = useLang();
+  const isMobile = useIsMobile();
+
+  const displayName = (emp: { name: string; nameKana?: string | null }) =>
+    lang === "id" && emp.nameKana ? emp.nameKana : emp.name;
+
   const { data: employees } = trpc.master.listEmployees.useQuery();
 
   const { data: records } = trpc.correction.getRecordsByEmployee.useQuery(
@@ -77,7 +85,7 @@ export default function Correction() {
       setTimeout(() => setSaved(false), 4000);
     },
     onError: (err) => {
-      toast.error(err.message || "申請の送信に失敗しました");
+      toast.error(err.message || t("申請の送信に失敗しました", "Gagal mengirim permohonan"));
     },
   });
 
@@ -86,11 +94,11 @@ export default function Correction() {
 
   const handleSubmit = () => {
     if (!selectedEmployeeId || !selectedRecordId || !reason) {
-      toast.error("必須項目を入力してください");
+      toast.error(t("必須項目を入力してください", "Harap isi semua kolom wajib"));
       return;
     }
     if (correctionType === "time_correction" && !newClockInTime && !newClockOutTime) {
-      toast.error("修正する時刻を少なくとも1つ入力してください");
+      toast.error(t("修正する時刻を少なくとも1つ入力してください", "Masukkan setidaknya satu waktu yang ingin dikoreksi"));
       return;
     }
     createMutation.mutate({
@@ -111,27 +119,37 @@ export default function Correction() {
 
   // ステップ定義
   const steps = [
-    { key: "select-employee", label: "作業員選択" },
-    { key: "correction-form", label: "申請内容入力" },
+    { key: "select-employee", label: t("作業員選択", "Pilih Pekerja") },
+    { key: "correction-form", label: t("申請内容入力", "Isi Permohonan") },
   ];
   const currentStepIndex = steps.findIndex((s) => s.key === step);
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <FileText className="h-6 w-6 text-primary" />
-          訂正申請
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          打刻ミスがある場合は訂正申請を送信してください。管理者が審査します。
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <FileText className="h-6 w-6 text-primary" />
+            {t("訂正申請", "Permohonan Koreksi")}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("打刻の訂正・キャンセルを申請できます", "Anda dapat mengajukan koreksi atau pembatalan absensi")}
+          </p>
+        </div>
+        {isMobile && (
+          <button
+            onClick={toggle}
+            className="text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-white shadow-sm"
+          >
+            {lang === "ja" ? "🇮🇩 Indonesia" : "🇯🇵 日本語"}
+          </button>
+        )}
       </div>
 
       {/* 成功バナー */}
       {saved && (
         <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-sm font-medium">
-          <span>✓</span> 訂正申請を送信しました
+          <span>✓</span> {t("訂正申請を送信しました", "Permohonan koreksi telah dikirim")}
         </div>
       )}
 
@@ -157,7 +175,7 @@ export default function Correction() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-base">
-            {step === "select-employee" && "① 作業員を選択"}
+            {step === "select-employee" && `① ${t("作業員を選択", "Pilih Pekerja")}`}
             {step === "correction-form" && "② 訂正内容を入力"}
           </CardTitle>
         </CardHeader>
@@ -169,7 +187,7 @@ export default function Correction() {
               <div className="space-y-2">
                 <Label className="text-sm font-medium flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  申請者（作業員名）<span className="text-destructive">*</span>
+                  {t("作業員を選択", "Pilih Pekerja")}<span className="text-destructive">*</span>
                 </Label>
                 <div className="rounded-lg border border-border overflow-hidden max-h-72 overflow-y-auto">
                   {employees?.map((emp) => (
@@ -184,7 +202,7 @@ export default function Correction() {
                       <div className="flex items-center gap-3">
                         <HardHat className={`h-4 w-4 shrink-0 ${selectedEmployeeId === String(emp.id) ? "text-orange-500" : "text-muted-foreground"}`} />
                         <div>
-                          <p className="text-sm font-semibold">{emp.name}</p>
+                          <p className="text-sm font-semibold">{displayName(emp)}</p>
                           <p className="text-xs text-muted-foreground">{emp.employeeId}</p>
                         </div>
                       </div>
@@ -196,13 +214,13 @@ export default function Correction() {
               <Button
                 className="w-full h-11"
                 onClick={() => {
-                  if (!selectedEmployeeId) { toast.error("作業員を選択してください"); return; }
+                  if (!selectedEmployeeId) { toast.error(t("作業員を選択してください", "Pilih pekerja terlebih dahulu")); return; }
                   setSelectedRecordId("");
                   setStep("correction-form");
                 }}
                 disabled={!selectedEmployeeId}
               >
-                <span className="flex items-center gap-2">次へ <ChevronRight className="h-4 w-4" /></span>
+                <span className="flex items-center gap-2">{t("次へ", "Berikutnya")} <ChevronRight className="h-4 w-4" /></span>
               </Button>
             </>
           )}
@@ -214,7 +232,7 @@ export default function Correction() {
               <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg">
                 <User className="h-5 w-5 text-muted-foreground shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold">{selectedEmployee?.name}</p>
+                  <p className="text-sm font-semibold">{selectedEmployee ? displayName(selectedEmployee) : ""}</p>
                   <p className="text-xs text-muted-foreground">{selectedEmployee?.employeeId}</p>
                 </div>
               </div>
@@ -223,7 +241,7 @@ export default function Correction() {
               <div className="space-y-2">
                 <Label className="text-sm font-medium flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  対象の出退勤記録<span className="text-destructive">*</span>
+                  {t("記録を選択", "Pilih Catatan")}<span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={selectedRecordId}
@@ -292,7 +310,7 @@ export default function Correction() {
               {/* 訂正種別 */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  訂正の種類 <span className="text-destructive">*</span>
+                  {t("訂正の種類", "Jenis Koreksi")} <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={correctionType}
@@ -306,8 +324,8 @@ export default function Correction() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="time_correction">時刻の修正</SelectItem>
-                    <SelectItem value="cancel">記録のキャンセル</SelectItem>
+                    <SelectItem value="time_correction">{t("出勤時刻の修正", "Koreksi waktu masuk")} / {t("退勤時刻の修正", "Koreksi waktu pulang")}</SelectItem>
+                    <SelectItem value="cancel">{t("記録のキャンセル", "Batalkan catatan")}</SelectItem>
                     <SelectItem value="site_change">現場の変更</SelectItem>
                     <SelectItem value="other">その他</SelectItem>
                   </SelectContent>
@@ -319,7 +337,7 @@ export default function Correction() {
                 <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border/50">
                   <p className="text-xs text-muted-foreground">修正する時刻を入力してください（片方のみでも可）</p>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">新しい出勤時刻</Label>
+                    <Label className="text-sm font-medium">{t("新しい出勤時刻", "Waktu masuk baru")}</Label>
                     <Input
                       type="datetime-local"
                       value={newClockInTime}
@@ -328,7 +346,7 @@ export default function Correction() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">新しい退勤時刻</Label>
+                    <Label className="text-sm font-medium">{t("新しい退勤時刻", "Waktu pulang baru")}</Label>
                     <Input
                       type="datetime-local"
                       value={newClockOutTime}
@@ -342,7 +360,7 @@ export default function Correction() {
               {/* 訂正理由 */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  訂正理由 <span className="text-destructive">*</span>
+                  {t("申請理由", "Alasan permohonan")} <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   placeholder="訂正が必要な理由を入力してください..."
@@ -355,7 +373,7 @@ export default function Correction() {
 
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1 h-11" onClick={() => setStep("select-employee")}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> 戻る
+                  <ChevronLeft className="h-4 w-4 mr-1" /> {t("戻る", "Kembali")}
                 </Button>
                 <Button
                   className="flex-1 h-11"
@@ -365,9 +383,9 @@ export default function Correction() {
                   {createMutation.isPending ? (
                     <span className="flex items-center gap-2">
                       <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                      送信中...
+                      {t("申請中...", "Memproses...")}
                     </span>
-                  ) : "申請する"}
+                  ) : t("申請する", "Ajukan")}
                 </Button>
               </div>
             </>
