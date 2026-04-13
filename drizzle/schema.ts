@@ -10,7 +10,7 @@ export const users = pgTable("users", {
   name: text("name"),
   email: text("email"),
   loginMethod: text("loginMethod"),
-  role: text("role").default("user").notNull(), // 'user' | 'admin'
+  role: text("role").default("user").notNull(), // 'user' | 'admin' | 'staff'
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
   lastSignedIn: text("lastSignedIn").default(sql`(now()::text)`).notNull(),
@@ -25,6 +25,7 @@ export const employeeMaster = pgTable("employee_master", {
   employeeId: text("employeeId").notNull().unique(),
   name: text("name").notNull(),
   pin: text("pin"),
+  role: text("role").default("worker").notNull(), // 'worker' | 'staff' | 'admin'
   status: text("status").default("active").notNull(), // 'active' | 'inactive'
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),

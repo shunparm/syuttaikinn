@@ -18,6 +18,7 @@ export const masterRouter = router({
     .input(z.object({
       employeeId: z.string().min(1).max(50),
       name: z.string().min(1).max(255),
+      role: z.enum(["worker", "staff", "admin"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
     }))
     .mutation(async ({ input }) => {
@@ -32,6 +33,7 @@ export const masterRouter = router({
       id: z.number(),
       employeeId: z.string().min(1).max(50).optional(),
       name: z.string().min(1).max(255).optional(),
+      role: z.enum(["worker", "staff", "admin"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
     }))
     .mutation(async ({ input }) => {

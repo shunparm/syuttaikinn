@@ -28,6 +28,7 @@ type Employee = {
   id: number;
   employeeId: string;
   name: string;
+  role: string;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -39,8 +40,8 @@ export default function AdminEmployees() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
-  const [form, setForm] = useState<{ employeeId: string; name: string; status: "active" | "inactive" }>({
-    employeeId: "", name: "", status: "active",
+  const [form, setForm] = useState<{ employeeId: string; name: string; role: "worker" | "staff" | "admin"; status: "active" | "inactive" }>({
+    employeeId: "", name: "", role: "worker", status: "active",
   });
 
   const { data: employees, refetch } = trpc.master.listEmployees.useQuery({ includeInactive: true });
@@ -79,13 +80,18 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", status: "active" });
+    setForm({ employeeId: "", name: "", role: "worker", status: "active" });
     setDialogOpen(true);
   };
 
   const openEdit = (emp: Employee) => {
     setEditTarget(emp);
-    setForm({ employeeId: emp.employeeId, name: emp.name, status: emp.status === "inactive" ? "inactive" : "active" });
+    setForm({
+      employeeId: emp.employeeId,
+      name: emp.name,
+      role: (emp.role === "staff" || emp.role === "admin") ? emp.role : "worker",
+      status: emp.status === "inactive" ? "inactive" : "active",
+    });
     setDialogOpen(true);
   };
 
@@ -147,6 +153,7 @@ export default function AdminEmployees() {
                   <tr className="border-b border-border bg-muted/30">
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">作業員ID</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">氏名</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">役割</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">ステータス</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">登録日</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">操作</th>
@@ -157,6 +164,20 @@ export default function AdminEmployees() {
                     <tr key={emp.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                       <td className="py-3 px-4 font-mono text-xs text-muted-foreground">{emp.employeeId}</td>
                       <td className="py-3 px-4 font-semibold">{emp.name}</td>
+                      <td className="py-3 px-4">
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs border-0 ${
+                            emp.role === "admin"
+                              ? "bg-purple-100 text-purple-700"
+                              : emp.role === "staff"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {emp.role === "admin" ? "管理者" : emp.role === "staff" ? "事務" : "作業員"}
+                        </Badge>
+                      </td>
                       <td className="py-3 px-4">
                         <Badge
                           variant="secondary"
@@ -222,6 +243,22 @@ export default function AdminEmployees() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="h-10"
               />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">役割</Label>
+              <Select
+                value={form.role}
+                onValueChange={(v) => setForm({ ...form, role: v as "worker" | "staff" | "admin" })}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="worker">作業員</SelectItem>
+                  <SelectItem value="staff">事務</SelectItem>
+                  <SelectItem value="admin">管理者</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">ステータス</Label>

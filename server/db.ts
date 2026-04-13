@@ -27,7 +27,7 @@ export async function initDb() {
         name TEXT,
         email TEXT,
         "loginMethod" TEXT,
-        role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user', 'admin')),
+        role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user', 'admin', 'staff')),
         "createdAt" TEXT NOT NULL DEFAULT now()::text,
         "updatedAt" TEXT NOT NULL DEFAULT now()::text,
         "lastSignedIn" TEXT NOT NULL DEFAULT now()::text
@@ -41,6 +41,7 @@ export async function initDb() {
         "createdAt" TEXT NOT NULL DEFAULT now()::text,
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
+      ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'worker' CHECK(role IN ('worker', 'staff', 'admin'));
       CREATE TABLE IF NOT EXISTS site_master (
         id SERIAL PRIMARY KEY,
         "siteId" TEXT NOT NULL UNIQUE,

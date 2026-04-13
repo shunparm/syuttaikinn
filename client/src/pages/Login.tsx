@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Lock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 
 export default function Login() {
+  const [staffId, setStaffId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,12 +18,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/login-staff", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ staffId, password }),
         credentials: "include",
       });
 
@@ -32,7 +34,6 @@ export default function Login() {
         return;
       }
 
-      // ログイン成功時はページをリロード
       window.location.href = "/";
     } catch (err) {
       setError("ネットワークエラーが発生しました");
@@ -49,8 +50,8 @@ export default function Login() {
               <Lock className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">勤怠管理システム</CardTitle>
-          <p className="text-sm text-muted-foreground">管理者パスワードでログイン</p>
+          <CardTitle className="text-2xl font-bold">事務・管理者ログイン</CardTitle>
+          <p className="text-sm text-muted-foreground">社員IDとパスワードでログイン</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -62,9 +63,24 @@ export default function Login() {
             )}
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
+              <Label htmlFor="staffId" className="text-sm font-medium">
+                社員ID
+              </Label>
+              <Input
+                id="staffId"
+                type="text"
+                placeholder="社員IDを入力してください"
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
+                disabled={loading}
+                autoFocus
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium">
                 パスワード
-              </label>
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -72,14 +88,13 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                autoFocus
               />
             </div>
 
             <Button
               type="submit"
               className="w-full"
-              disabled={loading || !password}
+              disabled={loading || !staffId || !password}
             >
               {loading ? "ログイン中..." : "ログイン"}
             </Button>
