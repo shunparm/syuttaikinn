@@ -125,7 +125,7 @@ export default function ClockIn() {
             </span>
           </CardDescription>
         </CardHeader>
-        <CardContent key={step} className="space-y-4">
+        <CardContent className="space-y-4">
 
           {/* ステップ1: 作業員選択 */}
           {step === "select-employee" && (

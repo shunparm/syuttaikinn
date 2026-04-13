@@ -137,7 +137,7 @@ export default function ClockOut() {
             </span>
           </CardDescription>
         </CardHeader>
-        <CardContent key={step} className="space-y-4">
+        <CardContent className="space-y-4">
 
           {/* ステップ1: 稼働中作業員選択 */}
           {step === "select-employee" && (
