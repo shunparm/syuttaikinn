@@ -6,12 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HardHat, Clock, MapPin, FileText, Users, ChevronRight, ChevronLeft, Check } from "lucide-react";
-import { useLocation } from "wouter";
 
 type Step = "select-employee" | "clock-out-form";
 
 export default function ClockOut() {
-  const [, setLocation] = useLocation();
   const [step, setStep] = useState<Step>("select-employee");
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [workReport, setWorkReport] = useState("");
@@ -27,9 +25,15 @@ export default function ClockOut() {
     onSuccess: () => {
       utils.attendance.getActiveWorkers.invalidate();
       utils.attendance.getDashboardStats.invalidate();
-      sessionStorage.setItem("clockOutSuccess", "1");
       setShowAnim(true);
-      setTimeout(() => setLocation("/records"), 1800);
+      setTimeout(() => {
+        setShowAnim(false);
+        setStep("select-employee");
+        setSelectedRecordId(null);
+        setWorkReport("");
+        setCompanionIds([]);
+        setErrorMsg("");
+      }, 1800);
     },
     onError: (err) => {
       setErrorMsg(err.message || "退勤の記録に失敗しました");
@@ -257,6 +261,10 @@ export default function ClockOut() {
       {/* 成功アニメーションオーバーレイ */}
       {showAnim && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <style>{`
+            @keyframes drawCheck { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
+            @keyframes scaleIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+          `}</style>
           <div className="bg-white rounded-2xl px-12 py-10 flex flex-col items-center gap-4 shadow-2xl">
             <div className="relative flex items-center justify-center">
               <span className="absolute inline-flex h-28 w-28 rounded-full bg-red-400 opacity-20 animate-ping" />

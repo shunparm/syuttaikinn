@@ -4,12 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Clock, HardHat, MapPin, ChevronRight, ChevronLeft, Check } from "lucide-react";
-import { useLocation } from "wouter";
 
 type Step = "select-employee" | "select-site";
 
 export default function ClockIn() {
-  const [, setLocation] = useLocation();
   const [step, setStep] = useState<Step>("select-employee");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null);
@@ -24,9 +22,14 @@ export default function ClockIn() {
     onSuccess: () => {
       utils.attendance.getActiveWorkers.invalidate();
       utils.attendance.getDashboardStats.invalidate();
-      sessionStorage.setItem("clockInSuccess", "1");
       setShowAnim(true);
-      setTimeout(() => setLocation("/active-workers"), 1800);
+      setTimeout(() => {
+        setShowAnim(false);
+        setStep("select-employee");
+        setSelectedEmployeeId(null);
+        setSelectedSiteId(null);
+        setErrorMsg("");
+      }, 1800);
     },
     onError: (err) => {
       setErrorMsg(err.message || "出勤の記録に失敗しました");
@@ -214,6 +217,10 @@ export default function ClockIn() {
       {/* 成功アニメーションオーバーレイ */}
       {showAnim && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <style>{`
+            @keyframes drawCheck { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
+            @keyframes scaleIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+          `}</style>
           <div className="bg-white rounded-2xl px-12 py-10 flex flex-col items-center gap-4 shadow-2xl">
             <div className="relative flex items-center justify-center">
               <span className="absolute inline-flex h-28 w-28 rounded-full bg-emerald-400 opacity-20 animate-ping" />
