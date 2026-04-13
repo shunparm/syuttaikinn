@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { employeeMaster, siteMaster } from "../../drizzle/schema";
@@ -9,7 +9,7 @@ export const masterRouter = router({
     .input(z.object({ includeInactive: z.boolean().optional().default(false) }).optional())
     .query(async ({ input }) => {
       const db = getDb();
-      const rows = await db.select().from(employeeMaster).orderBy(employeeMaster.employeeId);
+      const rows = await db.select().from(employeeMaster).orderBy(sql`CAST(${employeeMaster.employeeId} AS INTEGER)`);
       if (input?.includeInactive) return rows;
       return rows.filter((r) => r.status === "active");
     }),
