@@ -29,11 +29,15 @@ export default function ClockIn() {
       setRecordedTime(new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }));
       setShowAnim(true);
       setTimeout(() => {
-        setShowAnim(false);
-        setStep("select-employee");
-        setSelectedEmployeeId(null);
-        setSelectedSiteId(null);
-        setErrorMsg("");
+        if (isMobile) {
+          window.location.href = "/";
+        } else {
+          setShowAnim(false);
+          setStep("select-employee");
+          setSelectedEmployeeId(null);
+          setSelectedSiteId(null);
+          setErrorMsg("");
+        }
       }, 3000);
     },
     onError: (err) => {

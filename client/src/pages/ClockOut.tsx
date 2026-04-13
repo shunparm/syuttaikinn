@@ -34,13 +34,17 @@ export default function ClockOut() {
       setClockOutTime(now.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }));
       setShowAnim(true);
       setTimeout(() => {
-        setShowAnim(false);
-        setStep("select-employee");
-        setSelectedRecordId(null);
-        setWorkReport("");
-        setCompanionIds([]);
-        setErrorMsg("");
-        setClockInTimeForCalc(null);
+        if (isMobile) {
+          window.location.href = "/";
+        } else {
+          setShowAnim(false);
+          setStep("select-employee");
+          setSelectedRecordId(null);
+          setWorkReport("");
+          setCompanionIds([]);
+          setErrorMsg("");
+          setClockInTimeForCalc(null);
+        }
       }, 3000);
     },
     onError: (err) => {
