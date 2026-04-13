@@ -62,7 +62,7 @@ export default function ClockOut() {
   // ─── 成功画面（ページ全体を差し替え） ────────────────────────────────────────
   if (showAnim) {
     return (
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-lg mx-auto" translate="no">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-10 text-center">
             <div className="flex justify-center mb-6">
