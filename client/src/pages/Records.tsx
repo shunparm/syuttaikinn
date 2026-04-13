@@ -12,7 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, Clock, Filter, Search, Users } from "lucide-react";
+import { ClipboardList, Clock, Filter, Search, Trash2, Users } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 function minutesToHHMM(min: number | null | undefined) {
   if (!min) return "-";
@@ -22,6 +23,8 @@ function minutesToHHMM(min: number | null | undefined) {
 }
 
 export default function Records() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "staff";
   const today = new Date();
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
@@ -46,10 +49,19 @@ export default function Records() {
     siteId: undefined as number | undefined,
   });
 
+  const deleteMutation = trpc.attendance.deleteRecord.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  const handleDelete = (id: number) => {
+    if (!window.confirm("この出勤記録を削除しますか？")) return;
+    deleteMutation.mutate({ id });
+  };
+
   const { data: employees } = trpc.master.listEmployees.useQuery({ includeInactive: false });
   const { data: allEmployees } = trpc.master.listEmployees.useQuery({});
   const { data: sites } = trpc.master.listSites.useQuery({ includeInactive: false });
-  const { data: records, isLoading } = trpc.attendance.getAttendanceRecords.useQuery(queryParams);
+  const { data: records, isLoading, refetch } = trpc.attendance.getAttendanceRecords.useQuery(queryParams);
 
   // 作業員IDから名前を解決するヘルパー
   const resolveCompanionNames = (companionJson: string | null | undefined): string => {
@@ -227,6 +239,7 @@ export default function Records() {
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">状態</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">同行作業員</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">作業日報</th>
+                    {isAdmin && <th className="py-3 px-4" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -288,6 +301,19 @@ export default function Records() {
                       <td className="py-3 px-4 text-muted-foreground max-w-48 truncate">
                         {record.workReport || "-"}
                       </td>
+                      {isAdmin && (
+                        <td className="py-3 px-4 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(record.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            削除
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

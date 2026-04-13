@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eq, and, gte, lte, isNull } from "drizzle-orm";
-import { router, publicProcedure } from "../_core/trpc";
+import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
 
@@ -129,6 +129,17 @@ export const attendanceRouter = router({
         .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
         .where(and(...conditions))
         .orderBy(attendanceRecords.clockInTime);
+    }),
+
+  deleteRecord: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      await db
+        .update(attendanceRecords)
+        .set({ status: "deleted", updatedAt: new Date().toISOString() })
+        .where(eq(attendanceRecords.id, input.id));
+      return { success: true };
     }),
 
   getDashboardStats: publicProcedure.query(async () => {
