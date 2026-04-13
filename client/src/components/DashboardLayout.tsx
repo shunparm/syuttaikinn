@@ -25,15 +25,15 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   BarChart3,
+  BookOpen,
   Building2,
-  ClipboardList,
   Clock,
   Download,
-  FileText,
+  FilePen,
   HardHat,
+  LogIn,
   LogOut,
   PanelLeft,
-  Settings,
   Shield,
   Users,
   UserCog,
@@ -46,20 +46,20 @@ import { Badge } from "./ui/badge";
 
 // ナビゲーション定義
 const workerMenuItems = [
-  { icon: BarChart3, label: "ダッシュボード", path: "/", iconColor: "" },
-  { icon: Clock, label: "出勤/Pergi kerja", path: "/clock-in", iconColor: "text-orange-500" },
+  { icon: BarChart3, label: "ダッシュボード", path: "/", iconColor: "text-violet-500" },
+  { icon: LogIn, label: "出勤/Pergi kerja", path: "/clock-in", iconColor: "text-sky-500" },
   { icon: LogOut, label: "退勤/Pulang kerja", path: "/clock-out", iconColor: "text-red-500" },
-  { icon: HardHat, label: "作業中/Sedang bekerja", path: "/active-workers", iconColor: "" },
-  { icon: ClipboardList, label: "出勤簿/Buku daftar hadir", path: "/records", iconColor: "" },
-  { icon: FileText, label: "修正/Permohonan koreksi", path: "/correction", iconColor: "" },
+  { icon: HardHat, label: "作業中/Sedang bekerja", path: "/active-workers", iconColor: "text-amber-500" },
+  { icon: BookOpen, label: "出勤簿/Buku daftar hadir", path: "/records", iconColor: "text-emerald-500" },
+  { icon: FilePen, label: "修正/Permohonan koreksi", path: "/correction", iconColor: "text-orange-500" },
 ];
 
 const adminMenuItems = [
-  { icon: Users, label: "作業員管理", path: "/admin/employees" },
-  { icon: Building2, label: "現場管理", path: "/admin/sites" },
-  { icon: Shield, label: "訂正申請管理", path: "/admin/corrections" },
-  { icon: Download, label: "CSV出力", path: "/export" },
-  { icon: UserCog, label: "ユーザー管理", path: "/admin/users" },
+  { icon: Users, label: "作業員管理", path: "/admin/employees", iconColor: "text-blue-500" },
+  { icon: Building2, label: "現場管理", path: "/admin/sites", iconColor: "text-teal-500" },
+  { icon: Shield, label: "訂正申請管理", path: "/admin/corrections", iconColor: "text-rose-500" },
+  { icon: Download, label: "CSV出力", path: "/export", iconColor: "text-green-500" },
+  { icon: UserCog, label: "ユーザー管理", path: "/admin/users", iconColor: "text-purple-500" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -182,10 +182,10 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-3 px-2 w-full">
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-sidebar-accent rounded-lg transition-colors focus:outline-none shrink-0"
+                className="h-10 w-10 flex items-center justify-center bg-sidebar-accent/40 hover:bg-sidebar-accent border border-sidebar-border rounded-lg transition-colors focus:outline-none shrink-0"
                 aria-label="サイドバー切替"
               >
-                <PanelLeft className="h-4 w-4 text-sidebar-foreground/60" />
+                <PanelLeft className="h-5 w-5 text-sidebar-foreground" />
               </button>
               {!isCollapsed && (
                 <div className="flex items-center gap-2 min-w-0">
@@ -256,7 +256,7 @@ function DashboardLayoutContent({
                               : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
                           }`}
                         >
-                          <item.icon className={`h-4 w-4 ${isActive ? "text-sidebar-primary" : ""}`} />
+                          <item.icon className={`h-4 w-4 ${isActive ? "text-sidebar-primary" : item.iconColor || ""}`} />
                           <span>{item.label}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>

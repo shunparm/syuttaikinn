@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Clock, HardHat, MapPin, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { useIsMobile } from "@/hooks/useMobile";
 
 type Step = "select-employee" | "select-site";
 
@@ -13,6 +14,9 @@ export default function ClockIn() {
   const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [showAnim, setShowAnim] = useState(false);
+  const [recordedTime, setRecordedTime] = useState("");
+
+  const isMobile = useIsMobile();
 
   const { data: employees } = trpc.master.listEmployees.useQuery();
   const { data: sites } = trpc.master.listSites.useQuery();
@@ -22,6 +26,7 @@ export default function ClockIn() {
     onSuccess: () => {
       utils.attendance.getActiveWorkers.invalidate();
       utils.attendance.getDashboardStats.invalidate();
+      setRecordedTime(new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }));
       setShowAnim(true);
       setTimeout(() => {
         setShowAnim(false);
@@ -73,7 +78,9 @@ export default function ClockIn() {
               </div>
             </div>
             <p className="text-lg font-bold text-gray-800">出勤を記録しました</p>
-            <p className="text-sm text-gray-500 mt-2">本日もご安全に！</p>
+            {recordedTime && (
+              <p className="text-sm text-gray-500 mt-2">記録時間：{recordedTime}</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -90,7 +97,7 @@ export default function ClockIn() {
     <div className="max-w-2xl mx-auto space-y-6" translate="no">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Clock className="h-6 w-6 text-primary" />
+          <Clock className="h-6 w-6 text-sky-500" />
           出勤
         </h1>
         <p className="text-sm text-muted-foreground mt-1">作業員と現場を選択して出勤を記録してください</p>
@@ -101,7 +108,7 @@ export default function ClockIn() {
         {steps.map((s, i) => (
           <div key={s.key} className="flex items-center gap-2">
             <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-              i === currentStepIndex ? "bg-orange-500 text-white"
+              i === currentStepIndex ? "bg-sky-500 text-white"
               : i < currentStepIndex ? "bg-emerald-100 text-emerald-700"
               : "bg-muted text-muted-foreground"
             }`}>
@@ -147,24 +154,24 @@ export default function ClockIn() {
                         type="button"
                         onClick={() => setSelectedEmployeeId(emp.id)}
                         className={`w-full flex items-center justify-between px-4 py-3 text-left border-b border-border/50 last:border-b-0 transition-colors ${
-                          selectedEmployeeId === emp.id ? "bg-orange-50" : "bg-white hover:bg-muted/40"
+                          selectedEmployeeId === emp.id ? "bg-sky-50" : "bg-white hover:bg-muted/40"
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <HardHat className={`h-4 w-4 shrink-0 ${selectedEmployeeId === emp.id ? "text-orange-500" : "text-muted-foreground"}`} />
+                          <HardHat className={`h-4 w-4 shrink-0 ${selectedEmployeeId === emp.id ? "text-sky-500" : "text-muted-foreground"}`} />
                           <div>
                             <p className="text-sm font-semibold">{emp.name}</p>
                             <p className="text-xs text-muted-foreground">{emp.employeeId}</p>
                           </div>
                         </div>
-                        {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-orange-500 shrink-0" />}
+                        {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-sky-500 shrink-0" />}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
               <Button
-                className="w-full h-12 text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white"
+                className={`w-full text-base font-semibold bg-sky-500 hover:bg-sky-600 text-white${isMobile ? " h-20 text-xl font-bold sticky bottom-0 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100" : " h-12"}`}
                 onClick={() => { if (selectedEmployeeId) { setStep("select-site"); setSelectedSiteId(null); } }}
                 disabled={!selectedEmployeeId}
               >
@@ -200,17 +207,17 @@ export default function ClockIn() {
                         type="button"
                         onClick={() => setSelectedSiteId(site.id)}
                         className={`w-full flex items-center justify-between px-4 py-3 text-left border-b border-border/50 last:border-b-0 transition-colors ${
-                          selectedSiteId === site.id ? "bg-orange-50" : "bg-white hover:bg-muted/40"
+                          selectedSiteId === site.id ? "bg-sky-50" : "bg-white hover:bg-muted/40"
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <MapPin className={`h-4 w-4 shrink-0 ${selectedSiteId === site.id ? "text-orange-500" : "text-muted-foreground"}`} />
+                          <MapPin className={`h-4 w-4 shrink-0 ${selectedSiteId === site.id ? "text-sky-500" : "text-muted-foreground"}`} />
                           <div>
                             <p className="text-sm font-semibold">{site.siteName}</p>
                             {site.location && <p className="text-xs text-muted-foreground">{site.location}</p>}
                           </div>
                         </div>
-                        {selectedSiteId === site.id && <Check className="h-4 w-4 text-orange-500 shrink-0" />}
+                        {selectedSiteId === site.id && <Check className="h-4 w-4 text-sky-500 shrink-0" />}
                       </button>
                     ))}
                   </div>
@@ -224,7 +231,7 @@ export default function ClockIn() {
                   <ChevronLeft className="h-4 w-4 mr-1" /> 戻る
                 </Button>
                 <Button
-                  className="flex-1 h-12 text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white"
+                  className={`flex-1 text-base font-semibold bg-sky-500 hover:bg-sky-600 text-white${isMobile ? " h-20 text-xl font-bold sticky bottom-0 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100" : " h-12"}`}
                   onClick={handleSubmit}
                   disabled={clockInMutation.isPending || !selectedSiteId}
                 >
@@ -236,7 +243,7 @@ export default function ClockIn() {
                   ) : (
                     <span className="flex items-center gap-2">
                       <Clock className="h-5 w-5" />
-                      本日もご安全に！
+                      出勤
                     </span>
                   )}
                 </Button>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HardHat, Clock, MapPin, FileText, Users, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { useIsMobile } from "@/hooks/useMobile";
 
 type Step = "select-employee" | "clock-out-form";
 
@@ -16,6 +17,10 @@ export default function ClockOut() {
   const [companionIds, setCompanionIds] = useState<number[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [showAnim, setShowAnim] = useState(false);
+  const [clockOutTime, setClockOutTime] = useState("");
+  const [clockInTimeForCalc, setClockInTimeForCalc] = useState<string | null>(null);
+
+  const isMobile = useIsMobile();
 
   const { data: activeWorkers, isLoading } = trpc.attendance.getActiveWorkers.useQuery();
   const { data: employees } = trpc.master.listEmployees.useQuery();
@@ -25,6 +30,8 @@ export default function ClockOut() {
     onSuccess: () => {
       utils.attendance.getActiveWorkers.invalidate();
       utils.attendance.getDashboardStats.invalidate();
+      const now = new Date();
+      setClockOutTime(now.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }));
       setShowAnim(true);
       setTimeout(() => {
         setShowAnim(false);
@@ -33,6 +40,7 @@ export default function ClockOut() {
         setWorkReport("");
         setCompanionIds([]);
         setErrorMsg("");
+        setClockInTimeForCalc(null);
       }, 1800);
     },
     onError: (err) => {
@@ -45,6 +53,9 @@ export default function ClockOut() {
   const handleSubmit = () => {
     if (!selectedRecordId) return;
     setErrorMsg("");
+    if (selectedWorker?.clockInTime) {
+      setClockInTimeForCalc(selectedWorker.clockInTime);
+    }
     clockOutMutation.mutate({
       attendanceRecordId: selectedRecordId,
       workReport: workReport || undefined,
@@ -57,6 +68,13 @@ export default function ClockOut() {
     const h = Math.floor(elapsed / 60);
     const m = elapsed % 60;
     return h > 0 ? `${h}時間${m}分` : `${m}分`;
+  };
+
+  const formatWorkingTime = (clockIn: string) => {
+    const elapsed = Math.floor((Date.now() - new Date(clockIn).getTime()) / 60000);
+    const h = Math.floor(elapsed / 60);
+    const m = elapsed % 60;
+    return `${h}時間${String(m).padStart(2, "0")}分`;
   };
 
   // ─── 成功画面（ページ全体を差し替え） ────────────────────────────────────────
@@ -85,7 +103,12 @@ export default function ClockOut() {
               </div>
             </div>
             <p className="text-lg font-bold text-gray-800">退勤を記録しました</p>
-            <p className="text-sm text-gray-500 mt-2">本日もおつかれさまでした！</p>
+            {clockOutTime && (
+              <p className="text-sm text-gray-500 mt-2">退勤時刻：{clockOutTime}</p>
+            )}
+            {clockInTimeForCalc && (
+              <p className="text-sm text-gray-500 mt-1">勤務時間：{formatWorkingTime(clockInTimeForCalc)}</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -102,7 +125,7 @@ export default function ClockOut() {
     <div className="max-w-2xl mx-auto space-y-6" translate="no">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <HardHat className="h-6 w-6 text-amber-600" />
+          <HardHat className="h-6 w-6 text-red-500" />
           退勤
         </h1>
         <p className="text-sm text-muted-foreground mt-1">稼働中の作業員を選択して退勤を記録してください</p>
@@ -113,7 +136,7 @@ export default function ClockOut() {
         {steps.map((s, i) => (
           <div key={s.key} className="flex items-center gap-2">
             <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-              i === currentStepIndex ? "bg-red-600 text-white"
+              i === currentStepIndex ? "bg-red-500 text-white"
               : i < currentStepIndex ? "bg-emerald-100 text-emerald-700"
               : "bg-muted text-muted-foreground"
             }`}>
@@ -176,7 +199,7 @@ export default function ClockOut() {
                         <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
                           {formatElapsed(worker.clockInTime)}
                         </span>
-                        {selectedRecordId === worker.id && <Check className="h-4 w-4 text-red-600" />}
+                        {selectedRecordId === worker.id && <Check className="h-4 w-4 text-red-500" />}
                       </div>
                     </button>
                   ))}
@@ -184,7 +207,7 @@ export default function ClockOut() {
               )}
               {activeWorkers && activeWorkers.length > 0 && (
                 <Button
-                  className="w-full h-12 text-base font-semibold bg-red-600 hover:bg-red-700 text-white"
+                  className={`w-full text-base font-semibold bg-red-500 hover:bg-red-600 text-white${isMobile ? " h-20 text-xl font-bold sticky bottom-0 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100" : " h-12"}`}
                   onClick={() => { if (selectedRecordId) { setStep("clock-out-form"); setWorkReport(""); setCompanionIds([]); } }}
                   disabled={!selectedRecordId}
                 >
@@ -264,7 +287,7 @@ export default function ClockOut() {
                   <ChevronLeft className="h-4 w-4 mr-1" /> 戻る
                 </Button>
                 <Button
-                  className="flex-1 h-12 text-base font-semibold bg-red-600 hover:bg-red-700 text-white"
+                  className={`flex-1 text-base font-semibold bg-red-500 hover:bg-red-600 text-white${isMobile ? " h-20 text-xl font-bold sticky bottom-0 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100" : " h-12"}`}
                   onClick={handleSubmit}
                   disabled={clockOutMutation.isPending}
                 >
@@ -276,7 +299,7 @@ export default function ClockOut() {
                   ) : (
                     <span className="flex items-center gap-2">
                       <HardHat className="h-5 w-5" />
-                      本日もおつかれさまでした！
+                      退勤
                     </span>
                   )}
                 </Button>
