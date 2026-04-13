@@ -34,7 +34,7 @@ export default function ClockIn() {
         setSelectedEmployeeId(null);
         setSelectedSiteId(null);
         setErrorMsg("");
-      }, 1800);
+      }, 3000);
     },
     onError: (err) => {
       setErrorMsg(err.message || "出勤の記録に失敗しました");
@@ -78,8 +78,9 @@ export default function ClockIn() {
               </div>
             </div>
             <p className="text-lg font-bold text-gray-800">出勤を記録しました</p>
+            <p className="text-sm text-gray-500 mt-2">本日もご安全に！</p>
             {recordedTime && (
-              <p className="text-sm text-gray-500 mt-2">記録時間：{recordedTime}</p>
+              <p className="text-sm text-gray-400 mt-1">記録時間：{recordedTime}</p>
             )}
           </CardContent>
         </Card>

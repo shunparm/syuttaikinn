@@ -41,7 +41,7 @@ export default function ClockOut() {
         setCompanionIds([]);
         setErrorMsg("");
         setClockInTimeForCalc(null);
-      }, 1800);
+      }, 3000);
     },
     onError: (err) => {
       setErrorMsg(err.message || "退勤の記録に失敗しました");
@@ -103,11 +103,12 @@ export default function ClockOut() {
               </div>
             </div>
             <p className="text-lg font-bold text-gray-800">退勤を記録しました</p>
+            <p className="text-sm text-gray-500 mt-2">本日もお疲れさまでした！</p>
             {clockOutTime && (
-              <p className="text-sm text-gray-500 mt-2">退勤時刻：{clockOutTime}</p>
+              <p className="text-sm text-gray-400 mt-1">退勤時刻：{clockOutTime}</p>
             )}
             {clockInTimeForCalc && (
-              <p className="text-sm text-gray-500 mt-1">勤務時間：{formatWorkingTime(clockInTimeForCalc)}</p>
+              <p className="text-sm text-gray-400 mt-1">勤務時間：{formatWorkingTime(clockInTimeForCalc)}</p>
             )}
           </CardContent>
         </Card>

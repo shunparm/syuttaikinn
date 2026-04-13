@@ -1,8 +1,9 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { Building2, Clock, HardHat, TrendingUp, Users } from "lucide-react";
+import { Building2, Clock, HardHat, LogIn, LogOut, TrendingUp, Users } from "lucide-react";
 import { useLocation } from "wouter";
+import { useIsMobile } from "@/hooks/useMobile";
 
 function StatCard({
   title,
@@ -45,6 +46,7 @@ function StatCard({
 export default function Home() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const { data: stats, isLoading } = trpc.attendance.getDashboardStats.useQuery();
   const { data: activeWorkers } = trpc.attendance.getActiveWorkers.useQuery();
 
@@ -59,6 +61,25 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
+      {/* スマホ用出勤・退勤ボタン */}
+      {isMobile && (
+        <div className="grid grid-cols-2 gap-3 mb-2">
+          <button
+            onClick={() => setLocation("/clock-in")}
+            className="flex flex-col items-center justify-center gap-2 h-28 rounded-2xl bg-sky-500 hover:bg-sky-600 active:bg-sky-700 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100 text-white"
+          >
+            <LogIn className="h-10 w-10" />
+            <span className="text-xl font-bold">出勤</span>
+          </button>
+          <button
+            onClick={() => setLocation("/clock-out")}
+            className="flex flex-col items-center justify-center gap-2 h-28 rounded-2xl bg-red-500 hover:bg-red-600 active:bg-red-700 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100 text-white"
+          >
+            <LogOut className="h-10 w-10" />
+            <span className="text-xl font-bold">退勤</span>
+          </button>
+        </div>
+      )}
       {/* ページヘッダー */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
@@ -176,37 +197,39 @@ export default function Home() {
         </CardContent>
       </Card>
 
-      {/* クイックアクション */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card
-          className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-          onClick={() => setLocation("/clock-in")}
-        >
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-sky-50 group-hover:bg-sky-100 transition-colors">
-              <Clock className="h-6 w-6 text-sky-500" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">出勤申請</p>
-              <p className="text-xs text-muted-foreground mt-0.5">作業員・現場を選択して出勤</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card
-          className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-          onClick={() => setLocation("/clock-out")}
-        >
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-red-50 group-hover:bg-red-100 transition-colors">
-              <HardHat className="h-6 w-6 text-red-500" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">退勤申請</p>
-              <p className="text-xs text-muted-foreground mt-0.5">業務報告を入力して退勤</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* クイックアクション（PCのみ） */}
+      {!isMobile && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card
+            className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+            onClick={() => setLocation("/clock-in")}
+          >
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-sky-50 group-hover:bg-sky-100 transition-colors">
+                <Clock className="h-6 w-6 text-sky-500" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">出勤申請</p>
+                <p className="text-xs text-muted-foreground mt-0.5">作業員・現場を選択して出勤</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card
+            className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+            onClick={() => setLocation("/clock-out")}
+          >
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-red-50 group-hover:bg-red-100 transition-colors">
+                <HardHat className="h-6 w-6 text-red-500" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">退勤申請</p>
+                <p className="text-xs text-muted-foreground mt-0.5">業務報告を入力して退勤</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
