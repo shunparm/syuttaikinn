@@ -26,7 +26,22 @@ export const masterRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
-      await db.insert(employeeMaster).values(input);
+      const now = new Date().toISOString();
+      // 論理削除済みの同じemployeeIdのレコードを検索
+      const inactiveExisting = await db
+        .select()
+        .from(employeeMaster)
+        .where(and(eq(employeeMaster.employeeId, input.employeeId), eq(employeeMaster.status, "inactive")))
+        .limit(1);
+      if (inactiveExisting.length > 0) {
+        // 復活（UPDATE）
+        await db.update(employeeMaster)
+          .set({ name: input.name, nameKana: input.nameKana, pin: input.pin, role: input.role, status: "active", updatedAt: now })
+          .where(eq(employeeMaster.id, inactiveExisting[0].id));
+      } else {
+        // 通常INSERT
+        await db.insert(employeeMaster).values(input);
+      }
       const rows = await db.select().from(employeeMaster).where(eq(employeeMaster.employeeId, input.employeeId)).limit(1);
       return rows[0];
     }),
@@ -85,7 +100,22 @@ export const masterRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
-      await db.insert(siteMaster).values(input);
+      const now = new Date().toISOString();
+      // 論理削除済みの同じsiteIdのレコードを検索
+      const inactiveExisting = await db
+        .select()
+        .from(siteMaster)
+        .where(and(eq(siteMaster.siteId, input.siteId), eq(siteMaster.status, "inactive")))
+        .limit(1);
+      if (inactiveExisting.length > 0) {
+        // 復活（UPDATE）
+        await db.update(siteMaster)
+          .set({ siteName: input.siteName, location: input.location, status: "active", updatedAt: now })
+          .where(eq(siteMaster.id, inactiveExisting[0].id));
+      } else {
+        // 通常INSERT
+        await db.insert(siteMaster).values(input);
+      }
       const rows = await db.select().from(siteMaster).where(eq(siteMaster.siteId, input.siteId)).limit(1);
       return rows[0];
     }),
