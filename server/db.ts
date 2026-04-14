@@ -41,7 +41,9 @@ export async function initDb() {
         "createdAt" TEXT NOT NULL DEFAULT now()::text,
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
-      ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'worker' CHECK(role IN ('worker', 'staff', 'admin'));
+      ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'worker';
+      ALTER TABLE employee_master DROP CONSTRAINT IF EXISTS employee_master_role_check;
+      ALTER TABLE employee_master ADD CONSTRAINT employee_master_role_check CHECK(role IN ('worker', 'staff', 'admin', '応援'));
       ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "nameKana" TEXT;
       ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
       ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('user', 'admin', 'staff'));
