@@ -43,7 +43,7 @@ export default function AdminSites() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Site | null>(null);
 
-  const { data: sites, refetch } = trpc.master.listSites.useQuery({ includeInactive: true });
+  const { data: sites, refetch } = trpc.master.listSites.useQuery({ includeInactive: false });
 
   const createMutation = trpc.master.createSite.useMutation({
     onSuccess: () => {

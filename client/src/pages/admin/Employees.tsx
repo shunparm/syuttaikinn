@@ -52,7 +52,7 @@ export default function AdminEmployees() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
 
-  const { data: employees, refetch } = trpc.master.listEmployees.useQuery({ includeInactive: true });
+  const { data: employees, refetch } = trpc.master.listEmployees.useQuery({ includeInactive: false });
 
   const createMutation = trpc.master.createEmployee.useMutation({
     onSuccess: () => {
@@ -125,9 +125,22 @@ export default function AdminEmployees() {
       return;
     }
     if (editTarget) {
-      updateMutation.mutate({ id: editTarget.id, employeeId: form.employeeId, name: form.name, nameKana: form.nameKana, pin: form.pin, role: form.role });
+      updateMutation.mutate({
+        id: editTarget.id,
+        employeeId: form.employeeId,
+        name: form.name,
+        nameKana: form.nameKana || undefined,
+        pin: form.pin || undefined,
+        role: form.role,
+      });
     } else {
-      createMutation.mutate({ employeeId: form.employeeId, name: form.name, nameKana: form.nameKana, pin: form.pin, role: form.role });
+      createMutation.mutate({
+        employeeId: form.employeeId,
+        name: form.name,
+        nameKana: form.nameKana || undefined,
+        pin: form.pin || undefined,
+        role: form.role,
+      });
     }
   };
 
