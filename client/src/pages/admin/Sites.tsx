@@ -6,13 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -21,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Building2, Plus, Pencil, Shield, MapPin } from "lucide-react";
+import { Building2, Plus, Pencil, Shield, MapPin, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 type Site = {
@@ -44,8 +37,11 @@ export default function AdminSites() {
     siteId: string;
     siteName: string;
     location: string;
-    status: "active" | "inactive";
-  }>({ siteId: "", siteName: "", location: "", status: "active" });
+  }>({ siteId: "", siteName: "", location: "" });
+
+  // 削除確認ダイアログ用
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Site | null>(null);
 
   const { data: sites, refetch } = trpc.master.listSites.useQuery({ includeInactive: true });
 
@@ -69,6 +65,16 @@ export default function AdminSites() {
     onError: (err) => toast.error(err.message || "更新に失敗しました"),
   });
 
+  const deleteMutation = trpc.master.deleteSite.useMutation({
+    onSuccess: () => {
+      toast.success("工事現場を削除しました");
+      setDeleteConfirmOpen(false);
+      setDeleteTarget(null);
+      refetch();
+    },
+    onError: (err) => toast.error(err.message || "削除に失敗しました"),
+  });
+
   if (user?.role !== "admin") {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -83,7 +89,7 @@ export default function AdminSites() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ siteId: "", siteName: "", location: "", status: "active" });
+    setForm({ siteId: "", siteName: "", location: "" });
     setDialogOpen(true);
   };
 
@@ -93,9 +99,13 @@ export default function AdminSites() {
       siteId: site.siteId,
       siteName: site.siteName,
       location: site.location ?? "",
-      status: site.status === "inactive" ? "inactive" : "active",
     });
     setDialogOpen(true);
+  };
+
+  const openDeleteConfirm = (site: Site) => {
+    setDeleteTarget(site);
+    setDeleteConfirmOpen(true);
   };
 
   const handleSubmit = () => {
@@ -104,7 +114,8 @@ export default function AdminSites() {
       return;
     }
     const payload = {
-      ...form,
+      siteId: form.siteId,
+      siteName: form.siteName,
       location: form.location || undefined,
     };
     if (editTarget) {
@@ -112,6 +123,11 @@ export default function AdminSites() {
     } else {
       createMutation.mutate(payload);
     }
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate({ id: deleteTarget.id });
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
@@ -197,15 +213,26 @@ export default function AdminSites() {
                         {new Date(site.createdAt).toLocaleDateString("ja-JP")}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEdit(site)}
-                          className="h-8 gap-1.5 text-xs"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          編集
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEdit(site)}
+                            className="h-8 gap-1.5 text-xs"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            編集
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDeleteConfirm(site)}
+                            className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            削除
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -232,11 +259,7 @@ export default function AdminSites() {
                 value={form.siteId}
                 onChange={(e) => setForm({ ...form, siteId: e.target.value })}
                 className="h-10"
-                disabled={!!editTarget}
               />
-              {editTarget && (
-                <p className="text-xs text-muted-foreground">現場IDは変更できません</p>
-              )}
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">
@@ -258,21 +281,6 @@ export default function AdminSites() {
                 className="h-10"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">ステータス</Label>
-              <Select
-                value={form.status}
-                onValueChange={(v) => setForm({ ...form, status: v as "active" | "inactive" })}
-              >
-                <SelectTrigger className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">稼働中</SelectItem>
-                  <SelectItem value="inactive">終了</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -280,6 +288,41 @@ export default function AdminSites() {
             </Button>
             <Button onClick={handleSubmit} disabled={isPending}>
               {isPending ? "保存中..." : editTarget ? "更新する" : "登録する"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={(open) => { setDeleteConfirmOpen(open); if (!open) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              工事現場の削除
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm">この現場を削除しますか？</p>
+            {deleteTarget && (
+              <div className="mt-3 flex items-center gap-3 p-3 bg-muted/40 rounded-lg">
+                <Building2 className="h-5 w-5 text-muted-foreground shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold">{deleteTarget.siteName}</p>
+                  <p className="text-xs text-muted-foreground">{deleteTarget.siteId}</p>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-3">削除後は一覧から非表示になります。</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>キャンセル</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "削除中..." : "削除する"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, ne } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { employeeMaster, siteMaster } from "../../drizzle/schema";
@@ -20,7 +21,7 @@ export const masterRouter = router({
       name: z.string().min(1).max(255),
       nameKana: z.string().optional(),
       pin: z.string().max(6).optional(),
-      role: z.enum(["worker", "staff", "admin"]).default("worker"),
+      role: z.enum(["worker", "staff", "admin", "応援"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
     }))
     .mutation(async ({ input }) => {
@@ -37,11 +38,21 @@ export const masterRouter = router({
       name: z.string().min(1).max(255).optional(),
       nameKana: z.string().optional(),
       pin: z.string().max(6).optional(),
-      role: z.enum(["worker", "staff", "admin"]).optional(),
+      role: z.enum(["worker", "staff", "admin", "応援"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
+      if (input.employeeId) {
+        const existing = await db
+          .select()
+          .from(employeeMaster)
+          .where(and(eq(employeeMaster.employeeId, input.employeeId), ne(employeeMaster.id, input.id)))
+          .limit(1);
+        if (existing.length > 0) {
+          throw new TRPCError({ code: "CONFLICT", message: "その作業員IDは既に使用されています" });
+        }
+      }
       const { id, ...data } = input;
       await db.update(employeeMaster).set(data).where(eq(employeeMaster.id, id));
       const rows = await db.select().from(employeeMaster).where(eq(employeeMaster.id, id)).limit(1);
@@ -89,6 +100,16 @@ export const masterRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
+      if (input.siteId) {
+        const existing = await db
+          .select()
+          .from(siteMaster)
+          .where(and(eq(siteMaster.siteId, input.siteId), ne(siteMaster.id, input.id)))
+          .limit(1);
+        if (existing.length > 0) {
+          throw new TRPCError({ code: "CONFLICT", message: "その現場IDは既に使用されています" });
+        }
+      }
       const { id, ...data } = input;
       await db.update(siteMaster).set(data).where(eq(siteMaster.id, id));
       const rows = await db.select().from(siteMaster).where(eq(siteMaster.id, id)).limit(1);
