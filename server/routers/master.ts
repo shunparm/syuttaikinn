@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, ne } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { employeeMaster, siteMaster } from "../../drizzle/schema";
@@ -43,6 +44,14 @@ export const masterRouter = router({
     .mutation(async ({ input }) => {
       const db = getDb();
       const { id, ...data } = input;
+      if (data.employeeId) {
+        const duplicate = await db.select({ id: employeeMaster.id }).from(employeeMaster)
+          .where(and(eq(employeeMaster.employeeId, data.employeeId), ne(employeeMaster.id, id)))
+          .limit(1);
+        if (duplicate.length > 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "その作業員IDは既に使用されています" });
+        }
+      }
       await db.update(employeeMaster).set(data).where(eq(employeeMaster.id, id));
       const rows = await db.select().from(employeeMaster).where(eq(employeeMaster.id, id)).limit(1);
       return rows[0];
@@ -90,6 +99,14 @@ export const masterRouter = router({
     .mutation(async ({ input }) => {
       const db = getDb();
       const { id, ...data } = input;
+      if (data.siteId) {
+        const duplicate = await db.select({ id: siteMaster.id }).from(siteMaster)
+          .where(and(eq(siteMaster.siteId, data.siteId), ne(siteMaster.id, id)))
+          .limit(1);
+        if (duplicate.length > 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "その現場IDは既に使用されています" });
+        }
+      }
       await db.update(siteMaster).set(data).where(eq(siteMaster.id, id));
       const rows = await db.select().from(siteMaster).where(eq(siteMaster.id, id)).limit(1);
       return rows[0];

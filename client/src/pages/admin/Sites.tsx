@@ -232,11 +232,7 @@ export default function AdminSites() {
                 value={form.siteId}
                 onChange={(e) => setForm({ ...form, siteId: e.target.value })}
                 className="h-10"
-                disabled={!!editTarget}
               />
-              {editTarget && (
-                <p className="text-xs text-muted-foreground">現場IDは変更できません</p>
-              )}
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">

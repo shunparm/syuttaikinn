@@ -233,9 +233,7 @@ export default function AdminEmployees() {
                 value={form.employeeId}
                 onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
                 className="h-10"
-                disabled={!!editTarget}
               />
-              {editTarget && <p className="text-xs text-muted-foreground">作業員IDは変更できません</p>}
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">
