@@ -121,6 +121,8 @@ export const correctionRouter = router({
       await db.update(correctionRequests).set({ status: "approved", approvedBy: ctx.user.id, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
       if (req.correctionType === "cancel") {
         await db.update(attendanceRecords).set({ status: "deleted", updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
+      } else if (req.correctionType === "site_change" || req.correctionType === "other") {
+        await db.update(attendanceRecords).set({ isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
       } else if (req.correctionType === "time_correction") {
         const arRows = await db.select().from(attendanceRecords).where(eq(attendanceRecords.id, req.attendanceRecordId)).limit(1);
         if (arRows.length > 0) {
@@ -129,9 +131,9 @@ export const correctionRouter = router({
           const newClockOut = req.newClockOutTime ?? ar.clockOutTime;
           if (newClockOut) {
             const workingMinutes = calcWorkingMinutes(newClockIn, newClockOut);
-            await db.update(attendanceRecords).set({ clockInTime: newClockIn, clockOutTime: newClockOut, workingMinutes, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
+            await db.update(attendanceRecords).set({ clockInTime: newClockIn, clockOutTime: newClockOut, workingMinutes, isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
           } else {
-            await db.update(attendanceRecords).set({ clockInTime: newClockIn, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
+            await db.update(attendanceRecords).set({ clockInTime: newClockIn, isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
           }
         }
       }

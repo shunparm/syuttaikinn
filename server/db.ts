@@ -69,6 +69,7 @@ export async function initDb() {
         "createdAt" TEXT NOT NULL DEFAULT now()::text,
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
+      ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS "isCorrected" BOOLEAN NOT NULL DEFAULT false;
       CREATE TABLE IF NOT EXISTS correction_requests (
         id SERIAL PRIMARY KEY,
         "attendanceRecordId" INTEGER NOT NULL REFERENCES attendance_records(id),

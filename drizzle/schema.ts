@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -60,6 +60,7 @@ export const attendanceRecords = pgTable("attendance_records", {
   workReport: text("workReport"),
   workingMinutes: integer("workingMinutes"),
   status: text("status").default("active").notNull(), // 'active' | 'deleted'
+  isCorrected: boolean("isCorrected").default(false).notNull(),
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
 });

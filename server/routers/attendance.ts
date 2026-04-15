@@ -127,6 +127,7 @@ export const attendanceRouter = router({
         id: attendanceRecords.id, clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
         workReport: attendanceRecords.workReport, workingMinutes: attendanceRecords.workingMinutes,
         companionEmployeeIds: attendanceRecords.companionEmployeeIds, status: attendanceRecords.status,
+        isCorrected: attendanceRecords.isCorrected,
         employeeId: employeeMaster.id, employeeCode: employeeMaster.employeeId, employeeName: employeeMaster.name,
         siteId: siteMaster.id, siteCode: siteMaster.siteId, siteName: siteMaster.siteName, location: siteMaster.location,
       }).from(attendanceRecords)

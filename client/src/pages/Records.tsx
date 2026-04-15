@@ -309,7 +309,7 @@ export default function Records() {
                   {paginatedRecords.map((record) => (
                     <tr
                       key={record.id}
-                      className="border-b border-border/50 hover:bg-muted/20 transition-colors"
+                      className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${record.isCorrected ? "bg-yellow-50 hover:bg-yellow-100" : ""}`}
                     >
                       <td className="py-3 px-4 text-muted-foreground tabular-nums whitespace-nowrap">
                         {new Date(record.clockInTime).toLocaleDateString("ja-JP", {
@@ -318,7 +318,14 @@ export default function Records() {
                           weekday: "short",
                         })}
                       </td>
-                      <td className="py-3 px-4 font-medium whitespace-nowrap">{record.employeeName}</td>
+                      <td className="py-3 px-4 font-medium whitespace-nowrap">
+                        <span className="flex items-center gap-1.5">
+                          {record.employeeName}
+                          {record.isCorrected && (
+                            <span className="bg-yellow-200 text-yellow-800 text-xs px-1.5 py-0.5 rounded font-normal">訂正済</span>
+                          )}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{record.siteName}</td>
                       <td className="py-3 px-4 tabular-nums whitespace-nowrap">
                         {new Date(record.clockInTime).toLocaleTimeString("ja-JP", {

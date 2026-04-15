@@ -101,7 +101,7 @@ export const exportRouter = router({
         totalWorkingHours: minToHHMM(s.totalWorkingMinutes),
         totalAttendanceDays: s.totalAttendanceDays.size,
         records: s.records,
-      }));
+      })).sort((a, b) => a.employeeCode.localeCompare(b.employeeCode, undefined, { numeric: true }));
       return { rows: rowsWithMinutes, summaries };
     }),
 
