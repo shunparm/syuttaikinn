@@ -60,8 +60,9 @@ export const exportRouter = router({
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
-      const start = new Date(input.startDate); start.setHours(0,0,0,0);
-      const end = new Date(input.endDate); end.setHours(23,59,59,999);
+      // JST変換済み Date を直接使用（クライアントが +09:00 付きで渡す）
+      const start = input.startDate;
+      const end   = input.endDate;
       const conditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
       if (input.employeeId) conditions.push(eq(attendanceRecords.employeeId, input.employeeId));
       const rows = await db.select({
@@ -108,8 +109,9 @@ export const exportRouter = router({
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
-      const start = new Date(input.startDate); start.setHours(0,0,0,0);
-      const end = new Date(input.endDate); end.setHours(23,59,59,999);
+      // JST変換済み Date を直接使用（クライアントが +09:00 付きで渡す）
+      const start = input.startDate;
+      const end   = input.endDate;
       const conditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
       if (input.employeeId) conditions.push(eq(attendanceRecords.employeeId, input.employeeId));
       const [rows, allEmpRows] = await Promise.all([

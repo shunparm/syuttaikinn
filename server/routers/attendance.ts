@@ -118,11 +118,12 @@ export const attendanceRouter = router({
     .query(async ({ input }) => {
       const db = getDb();
       const conditions: any[] = [eq(attendanceRecords.status, "active")];
-      if (input.startDate) { const s = new Date(input.startDate); s.setHours(0,0,0,0); conditions.push(gte(attendanceRecords.clockInTime, iso(s))); }
-      if (input.endDate) { const e = new Date(input.endDate); e.setHours(23,59,59,999); conditions.push(lte(attendanceRecords.clockInTime, iso(e))); }
+      // JST変換済み Date を直接使用（クライアントが +09:00 付きで渡す）
+      if (input.startDate) { conditions.push(gte(attendanceRecords.clockInTime, iso(input.startDate))); }
+      if (input.endDate)   { conditions.push(lte(attendanceRecords.clockInTime, iso(input.endDate))); }
       if (input.employeeId) conditions.push(eq(attendanceRecords.employeeId, input.employeeId));
       if (input.siteId) conditions.push(eq(attendanceRecords.siteId, input.siteId));
-      return db.select({
+      const rows = await db.select({
         id: attendanceRecords.id, clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
         workReport: attendanceRecords.workReport, workingMinutes: attendanceRecords.workingMinutes,
         companionEmployeeIds: attendanceRecords.companionEmployeeIds, status: attendanceRecords.status,
@@ -133,6 +134,13 @@ export const attendanceRouter = router({
         .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
         .where(and(...conditions))
         .orderBy(attendanceRecords.clockInTime);
+      // workingMinutes をDB保存値ではなく clockIn/clockOut から都度再計算
+      return rows.map(r => ({
+        ...r,
+        workingMinutes: r.clockOutTime
+          ? calcWorkingMinutes(r.clockInTime, new Date(r.clockOutTime))
+          : null,
+      }));
     }),
 
   deleteRecord: adminProcedure

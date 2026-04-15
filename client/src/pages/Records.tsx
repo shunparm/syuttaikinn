@@ -27,11 +27,13 @@ function minutesToHHMM(min: number | null | undefined) {
 export default function Records() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "staff";
-  const today = new Date();
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  // JST基準の今日・月初を計算
+  const todayJST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+  const todayJSTStr = todayJST.toISOString().split("T")[0];
+  const firstOfMonthJSTStr = todayJSTStr.slice(0, 7) + "-01";
 
-  const [startDate, setStartDate] = useState(firstOfMonth.toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState(today.toISOString().split("T")[0]);
+  const [startDate, setStartDate] = useState(firstOfMonthJSTStr);
+  const [endDate, setEndDate] = useState(todayJSTStr);
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>("all");
   const [showSuccess, setShowSuccess] = useState(false);
   useEffect(() => {
@@ -46,8 +48,8 @@ export default function Records() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [queryParams, setQueryParams] = useState({
-    startDate: firstOfMonth,
-    endDate: today,
+    startDate: new Date(firstOfMonthJSTStr + "T00:00:00+09:00"),
+    endDate:   new Date(todayJSTStr + "T23:59:59+09:00"),
     employeeId: undefined as number | undefined,
     siteId: undefined as number | undefined,
   });
@@ -82,8 +84,8 @@ export default function Records() {
 
   const handleSearch = () => {
     setQueryParams({
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      startDate: new Date(startDate + "T00:00:00+09:00"),
+      endDate:   new Date(endDate   + "T23:59:59+09:00"),
       employeeId: filterEmployeeId !== "all" ? Number(filterEmployeeId) : undefined,
       siteId: filterSiteId !== "all" ? Number(filterSiteId) : undefined,
     });
