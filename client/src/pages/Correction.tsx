@@ -51,10 +51,18 @@ export default function Correction() {
   const [selectedRecordId, setSelectedRecordId] = useState<string>("");
   const [correctionType, setCorrectionType] = useState<"time_correction" | "cancel" | "site_change" | "other">("cancel");
   const [reason, setReason] = useState("");
-  const [newClockInTime, setNewClockInTime] = useState("");
-  const [newClockOutTime, setNewClockOutTime] = useState("");
+  const [newClockInDate, setNewClockInDate] = useState("");
+  const [newClockInTimeStr, setNewClockInTimeStr] = useState("");
+  const [newClockOutDate, setNewClockOutDate] = useState("");
+  const [newClockOutTimeStr, setNewClockOutTimeStr] = useState("");
   const [newSiteId, setNewSiteId] = useState<string>("");
   const [saved, setSaved] = useState(false);
+
+  // date(YYYY-MM-DD) + time(HH:mm) → Date in JST
+  const combineDT = (date: string, time: string): Date | undefined => {
+    if (!date || !time) return undefined;
+    return new Date(`${date}T${time}:00+09:00`);
+  };
 
   const { lang, toggle, t } = useLang();
   const isMobile = useIsMobile();
@@ -81,8 +89,8 @@ export default function Correction() {
       setSelectedRecordId("");
       setCorrectionType("cancel");
       setReason("");
-      setNewClockInTime("");
-      setNewClockOutTime("");
+      setNewClockInDate(""); setNewClockInTimeStr("");
+      setNewClockOutDate(""); setNewClockOutTimeStr("");
       setNewSiteId("");
       setSaved(true);
       setTimeout(() => setSaved(false), 4000);
@@ -100,7 +108,7 @@ export default function Correction() {
       toast.error(t("必須項目を入力してください", "Harap isi semua kolom wajib"));
       return;
     }
-    if (correctionType === "time_correction" && !newClockInTime && !newClockOutTime) {
+    if (correctionType === "time_correction" && !hasClockIn && !hasClockOut) {
       toast.error(t("修正する時刻を少なくとも1つ入力してください", "Masukkan setidaknya satu waktu yang ingin dikoreksi"));
       return;
     }
@@ -109,17 +117,19 @@ export default function Correction() {
       employeeId: Number(selectedEmployeeId),
       reason,
       correctionType,
-      newClockInTime: newClockInTime ? new Date(newClockInTime) : undefined,
-      newClockOutTime: newClockOutTime ? new Date(newClockOutTime) : undefined,
+      newClockInTime: combineDT(newClockInDate, newClockInTimeStr),
+      newClockOutTime: combineDT(newClockOutDate, newClockOutTimeStr),
       newSiteId: newSiteId ? Number(newSiteId) : undefined,
     });
   };
 
+  const hasClockIn  = !!(newClockInDate  && newClockInTimeStr);
+  const hasClockOut = !!(newClockOutDate && newClockOutTimeStr);
   const isFormValid =
     selectedEmployeeId &&
     selectedRecordId &&
     reason &&
-    (correctionType !== "time_correction" || newClockInTime || newClockOutTime);
+    (correctionType !== "time_correction" || hasClockIn || hasClockOut);
 
   // ステップ定義
   const steps = [
@@ -320,8 +330,8 @@ export default function Correction() {
                   value={correctionType}
                   onValueChange={(v) => {
                     setCorrectionType(v as typeof correctionType);
-                    setNewClockInTime("");
-                    setNewClockOutTime("");
+                    setNewClockInDate(""); setNewClockInTimeStr("");
+                    setNewClockOutDate(""); setNewClockOutTimeStr("");
                     setNewSiteId("");
                   }}
                 >
@@ -343,21 +353,17 @@ export default function Correction() {
                   <p className="text-xs text-muted-foreground">修正する時刻を入力してください（片方のみでも可）</p>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t("新しい出勤時刻", "Waktu masuk baru")}</Label>
-                    <Input
-                      type="datetime-local"
-                      value={newClockInTime}
-                      onChange={(e) => setNewClockInTime(e.target.value)}
-                      className="h-11"
-                    />
+                    <div className="flex gap-2">
+                      <Input type="date" value={newClockInDate} onChange={(e) => setNewClockInDate(e.target.value)} className="h-11 flex-1" />
+                      <Input type="time" value={newClockInTimeStr} onChange={(e) => setNewClockInTimeStr(e.target.value)} className="h-11 w-28" />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t("新しい退勤時刻", "Waktu pulang baru")}</Label>
-                    <Input
-                      type="datetime-local"
-                      value={newClockOutTime}
-                      onChange={(e) => setNewClockOutTime(e.target.value)}
-                      className="h-11"
-                    />
+                    <div className="flex gap-2">
+                      <Input type="date" value={newClockOutDate} onChange={(e) => setNewClockOutDate(e.target.value)} className="h-11 flex-1" />
+                      <Input type="time" value={newClockOutTimeStr} onChange={(e) => setNewClockOutTimeStr(e.target.value)} className="h-11 w-28" />
+                    </div>
                   </div>
                 </div>
               )}
