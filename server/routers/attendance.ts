@@ -4,15 +4,23 @@ import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
 
-// 実働時間計算（12:00〜13:00 の重複分を差し引く）
+// 実働時間計算（12:00〜13:00 JST の重複分を差し引く、UTC環境対応）
+// breakStart/breakEnd は JST 当日の 12:00/13:00 を UTC で表現
+const JST_OFFSET = 9 * 60 * 60 * 1000;
+function jstBreakRange(clockIn: Date): { breakStart: Date; breakEnd: Date } {
+  const jst = new Date(clockIn.getTime() + JST_OFFSET);
+  const y = jst.getUTCFullYear(), mo = jst.getUTCMonth(), d = jst.getUTCDate();
+  return {
+    breakStart: new Date(Date.UTC(y, mo, d, 3, 0, 0)),  // UTC 03:00 = JST 12:00
+    breakEnd:   new Date(Date.UTC(y, mo, d, 4, 0, 0)),  // UTC 04:00 = JST 13:00
+  };
+}
 function calcWorkingMinutes(clockInStr: string, clockOut: Date): number {
   const clockIn = new Date(clockInStr);
   const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
-  const breakStart = new Date(clockIn); breakStart.setHours(12, 0, 0, 0);
-  const breakEnd   = new Date(clockIn); breakEnd.setHours(13, 0, 0, 0);
+  const { breakStart, breakEnd } = jstBreakRange(clockIn);
   const overlapMs  = Math.max(0, Math.min(clockOut.getTime(), breakEnd.getTime()) - Math.max(clockIn.getTime(), breakStart.getTime()));
-  const overlapMin = Math.floor(overlapMs / 60000);
-  return Math.max(0, totalMinutes - overlapMin);
+  return Math.max(0, totalMinutes - Math.floor(overlapMs / 60000));
 }
 
 const iso = (d: Date) => d.toISOString();
