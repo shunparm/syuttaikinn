@@ -104,7 +104,7 @@ export default function ClockIn() {
   const currentStepIndex = steps.findIndex((s) => s.key === step);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6" translate="no">
+    <div className="max-w-2xl mx-auto space-y-3" translate="no">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -152,7 +152,7 @@ export default function ClockIn() {
             </span>
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-2">
 
           {/* ステップ1: 作業員選択 */}
           {step === "select-employee" && (

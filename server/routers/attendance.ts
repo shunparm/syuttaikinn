@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, gte, lte, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, isNull, desc } from "drizzle-orm";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
@@ -95,8 +95,9 @@ export const attendanceRouter = router({
 
   getTodayAttendance: publicProcedure.query(async () => {
     const db = getDb();
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const nowJST2 = new Date(Date.now() + 9 * 3600000);
+    const today    = new Date(Date.UTC(nowJST2.getUTCFullYear(), nowJST2.getUTCMonth(), nowJST2.getUTCDate()) - 9 * 3600000);
+    const tomorrow = new Date(today.getTime() + 24 * 3600000);
     return db.select({
       id: attendanceRecords.id, clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
       workReport: attendanceRecords.workReport, workingMinutes: attendanceRecords.workingMinutes,
@@ -134,7 +135,7 @@ export const attendanceRouter = router({
         .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
         .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
         .where(and(...conditions))
-        .orderBy(attendanceRecords.clockInTime);
+        .orderBy(desc(attendanceRecords.clockInTime));
       // workingMinutes をDB保存値ではなく clockIn/clockOut から都度再計算
       return rows.map(r => ({
         ...r,
@@ -157,11 +158,13 @@ export const attendanceRouter = router({
 
   getDashboardStats: publicProcedure.query(async () => {
     const db = getDb();
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    // JST基準で本日の開始・終了をUTCで計算
+    const nowJST = new Date(Date.now() + 9 * 3600000);
+    const todayStartUTC = new Date(Date.UTC(nowJST.getUTCFullYear(), nowJST.getUTCMonth(), nowJST.getUTCDate()) - 9 * 3600000);
+    const todayEndUTC   = new Date(todayStartUTC.getTime() + 24 * 3600000);
     const [activeRows, todayRows, empRows, siteRows] = await Promise.all([
       db.select({ id: attendanceRecords.id }).from(attendanceRecords).where(and(eq(attendanceRecords.status, "active"), isNull(attendanceRecords.clockOutTime))),
-      db.select({ id: attendanceRecords.id }).from(attendanceRecords).where(and(eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(today)), lte(attendanceRecords.clockInTime, iso(tomorrow)))),
+      db.select({ id: attendanceRecords.id }).from(attendanceRecords).where(and(eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(todayStartUTC)), lte(attendanceRecords.clockInTime, iso(todayEndUTC)))),
       db.select({ id: employeeMaster.id }).from(employeeMaster).where(eq(employeeMaster.status, "active")),
       db.select({ id: siteMaster.id }).from(siteMaster).where(eq(siteMaster.status, "active")),
     ]);

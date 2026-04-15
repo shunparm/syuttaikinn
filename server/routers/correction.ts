@@ -54,6 +54,7 @@ export const correctionRouter = router({
       attendanceRecordId: z.number(), employeeId: z.number(), reason: z.string().min(1),
       correctionType: z.enum(["time_correction", "cancel", "site_change", "other"]),
       newClockInTime: z.date().optional(), newClockOutTime: z.date().optional(),
+      newSiteId: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -65,6 +66,7 @@ export const correctionRouter = router({
         reason: input.reason, correctionType: input.correctionType,
         newClockInTime: input.newClockInTime ? iso(input.newClockInTime) : null,
         newClockOutTime: input.newClockOutTime ? iso(input.newClockOutTime) : null,
+        newSiteId: input.newSiteId ?? null,
         status: "pending",
       });
       const rows = await db.select().from(correctionRequests)
@@ -121,7 +123,11 @@ export const correctionRouter = router({
       await db.update(correctionRequests).set({ status: "approved", approvedBy: ctx.user.id, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
       if (req.correctionType === "cancel") {
         await db.update(attendanceRecords).set({ status: "deleted", updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
-      } else if (req.correctionType === "site_change" || req.correctionType === "other") {
+      } else if (req.correctionType === "site_change") {
+        const siteUpdateSet: any = { isCorrected: true, updatedAt: now };
+        if (req.newSiteId) siteUpdateSet.siteId = req.newSiteId;
+        await db.update(attendanceRecords).set(siteUpdateSet).where(eq(attendanceRecords.id, req.attendanceRecordId));
+      } else if (req.correctionType === "other") {
         await db.update(attendanceRecords).set({ isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
       } else if (req.correctionType === "time_correction") {
         const arRows = await db.select().from(attendanceRecords).where(eq(attendanceRecords.id, req.attendanceRecordId)).limit(1);

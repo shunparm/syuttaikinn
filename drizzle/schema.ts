@@ -77,6 +77,7 @@ export const correctionRequests = pgTable("correction_requests", {
   correctionType: text("correctionType").notNull(), // 'time_correction' | 'cancel' | 'site_change' | 'other'
   newClockInTime: text("newClockInTime"),
   newClockOutTime: text("newClockOutTime"),
+  newSiteId: integer("newSiteId").references(() => siteMaster.id),
   status: text("status").default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
   approvedBy: integer("approvedBy").references(() => employeeMaster.id),
   approvedAt: text("approvedAt"),
