@@ -18,7 +18,9 @@ import { Shield, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 const correctionTypeLabels: Record<string, string> = {
-  time_correction: "時刻の修正",
+  clock_in_modify: "出勤時刻の修正",
+  clock_out_modify: "退勤時刻の修正",
+  time_correction: "時刻の修正（旧）",
   cancel: "記録のキャンセル",
   site_change: "現場の変更",
   other: "その他",

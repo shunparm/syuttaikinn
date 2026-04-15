@@ -19,10 +19,12 @@ import { useLang } from "@/hooks/useLang";
 import { useIsMobile } from "@/hooks/useMobile";
 
 const correctionTypeLabels = {
-  time_correction: "時刻の修正",
+  clock_in_modify: "出勤時刻の修正",
+  clock_out_modify: "退勤時刻の修正",
   cancel: "記録のキャンセル",
   site_change: "現場の変更",
   other: "その他",
+  time_correction: "時刻の修正（旧）",
 };
 
 function formatTime(date: Date | string | null) {
@@ -49,7 +51,7 @@ export default function Correction() {
   const [step, setStep] = useState<Step>("select-employee");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [selectedRecordId, setSelectedRecordId] = useState<string>("");
-  const [correctionType, setCorrectionType] = useState<"time_correction" | "cancel" | "site_change" | "other">("cancel");
+  const [correctionType, setCorrectionType] = useState<"clock_in_modify" | "clock_out_modify" | "cancel" | "site_change" | "other" | "time_correction">("cancel");
   const [reason, setReason] = useState("");
   const [newClockInDate, setNewClockInDate] = useState("");
   const [newClockInTimeStr, setNewClockInTimeStr] = useState("");
@@ -108,6 +110,14 @@ export default function Correction() {
       toast.error(t("必須項目を入力してください", "Harap isi semua kolom wajib"));
       return;
     }
+    if (correctionType === "clock_in_modify" && !hasClockIn) {
+      toast.error(t("出勤時刻を入力してください", "Masukkan waktu masuk yang ingin dikoreksi"));
+      return;
+    }
+    if (correctionType === "clock_out_modify" && !hasClockOut) {
+      toast.error(t("退勤時刻を入力してください", "Masukkan waktu pulang yang ingin dikoreksi"));
+      return;
+    }
     if (correctionType === "time_correction" && !hasClockIn && !hasClockOut) {
       toast.error(t("修正する時刻を少なくとも1つ入力してください", "Masukkan setidaknya satu waktu yang ingin dikoreksi"));
       return;
@@ -117,8 +127,8 @@ export default function Correction() {
       employeeId: Number(selectedEmployeeId),
       reason,
       correctionType,
-      newClockInTime: combineDT(newClockInDate, newClockInTimeStr),
-      newClockOutTime: combineDT(newClockOutDate, newClockOutTimeStr),
+      newClockInTime: (correctionType === "clock_in_modify" || correctionType === "time_correction") ? combineDT(newClockInDate, newClockInTimeStr) : undefined,
+      newClockOutTime: (correctionType === "clock_out_modify" || correctionType === "time_correction") ? combineDT(newClockOutDate, newClockOutTimeStr) : undefined,
       newSiteId: newSiteId ? Number(newSiteId) : undefined,
     });
   };
@@ -129,6 +139,8 @@ export default function Correction() {
     selectedEmployeeId &&
     selectedRecordId &&
     reason &&
+    (correctionType !== "clock_in_modify" || hasClockIn) &&
+    (correctionType !== "clock_out_modify" || hasClockOut) &&
     (correctionType !== "time_correction" || hasClockIn || hasClockOut);
 
   // ステップ定義
@@ -339,7 +351,8 @@ export default function Correction() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="time_correction">{t("出勤時刻の修正", "Koreksi waktu masuk")} / {t("退勤時刻の修正", "Koreksi waktu pulang")}</SelectItem>
+                    <SelectItem value="clock_in_modify">{t("出勤時刻の修正", "Koreksi waktu masuk")}</SelectItem>
+                    <SelectItem value="clock_out_modify">{t("退勤時刻の修正", "Koreksi waktu pulang")}</SelectItem>
                     <SelectItem value="cancel">{t("記録のキャンセル", "Batalkan catatan")}</SelectItem>
                     <SelectItem value="site_change">現場の変更</SelectItem>
                     <SelectItem value="other">その他</SelectItem>
@@ -347,7 +360,35 @@ export default function Correction() {
                 </Select>
               </div>
 
-              {/* 時刻入力（「時刻の修正」選択時のみ表示） */}
+              {/* 出勤時刻入力（clock_in_modify選択時） */}
+              {correctionType === "clock_in_modify" && (
+                <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border/50">
+                  <p className="text-xs text-muted-foreground">新しい出勤時刻を入力してください</p>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t("新しい出勤時刻", "Waktu masuk baru")} <span className="text-destructive">*</span></Label>
+                    <div className="flex gap-2">
+                      <Input type="date" value={newClockInDate} onChange={(e) => setNewClockInDate(e.target.value)} className="h-11 flex-1" />
+                      <Input type="time" value={newClockInTimeStr} onChange={(e) => setNewClockInTimeStr(e.target.value)} className="h-11 w-28" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 退勤時刻入力（clock_out_modify選択時） */}
+              {correctionType === "clock_out_modify" && (
+                <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border/50">
+                  <p className="text-xs text-muted-foreground">新しい退勤時刻を入力してください</p>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t("新しい退勤時刻", "Waktu pulang baru")} <span className="text-destructive">*</span></Label>
+                    <div className="flex gap-2">
+                      <Input type="date" value={newClockOutDate} onChange={(e) => setNewClockOutDate(e.target.value)} className="h-11 flex-1" />
+                      <Input type="time" value={newClockOutTimeStr} onChange={(e) => setNewClockOutTimeStr(e.target.value)} className="h-11 w-28" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 時刻入力（旧time_correction - legacy） */}
               {correctionType === "time_correction" && (
                 <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border/50">
                   <p className="text-xs text-muted-foreground">修正する時刻を入力してください（片方のみでも可）</p>

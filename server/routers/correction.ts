@@ -52,7 +52,7 @@ export const correctionRouter = router({
   createCorrectionRequest: publicProcedure
     .input(z.object({
       attendanceRecordId: z.number(), employeeId: z.number(), reason: z.string().min(1),
-      correctionType: z.enum(["time_correction", "cancel", "site_change", "other"]),
+      correctionType: z.enum(["time_correction", "cancel", "site_change", "other", "clock_in_modify", "clock_out_modify"]),
       newClockInTime: z.date().optional(), newClockOutTime: z.date().optional(),
       newSiteId: z.number().optional(),
     }))
@@ -129,7 +129,33 @@ export const correctionRouter = router({
         await db.update(attendanceRecords).set(siteUpdateSet).where(eq(attendanceRecords.id, req.attendanceRecordId));
       } else if (req.correctionType === "other") {
         await db.update(attendanceRecords).set({ isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
+      } else if (req.correctionType === "clock_in_modify") {
+        if (req.newClockInTime) {
+          const arRows = await db.select().from(attendanceRecords).where(eq(attendanceRecords.id, req.attendanceRecordId)).limit(1);
+          if (arRows.length > 0) {
+            const ar = arRows[0];
+            const newClockIn = req.newClockInTime;
+            const clockOut = ar.clockOutTime;
+            if (clockOut) {
+              const workingMinutes = calcWorkingMinutes(newClockIn, clockOut);
+              await db.update(attendanceRecords).set({ clockInTime: newClockIn, workingMinutes, isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
+            } else {
+              await db.update(attendanceRecords).set({ clockInTime: newClockIn, isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
+            }
+          }
+        }
+      } else if (req.correctionType === "clock_out_modify") {
+        if (req.newClockOutTime) {
+          const arRows = await db.select().from(attendanceRecords).where(eq(attendanceRecords.id, req.attendanceRecordId)).limit(1);
+          if (arRows.length > 0) {
+            const ar = arRows[0];
+            const newClockOut = req.newClockOutTime;
+            const workingMinutes = calcWorkingMinutes(ar.clockInTime, newClockOut);
+            await db.update(attendanceRecords).set({ clockOutTime: newClockOut, workingMinutes, isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId));
+          }
+        }
       } else if (req.correctionType === "time_correction") {
+        // legacy handler
         const arRows = await db.select().from(attendanceRecords).where(eq(attendanceRecords.id, req.attendanceRecordId)).limit(1);
         if (arRows.length > 0) {
           const ar = arRows[0];
