@@ -66,13 +66,17 @@ export default function ClockOut() {
 
   const handleSubmit = () => {
     if (!selectedRecordId) return;
+    if (!workReport.trim()) {
+      setErrorMsg("作業日報を入力してください");
+      return;
+    }
     setErrorMsg("");
     if (selectedWorker?.clockInTime) {
       setClockInTimeForCalc(selectedWorker.clockInTime);
     }
     clockOutMutation.mutate({
       attendanceRecordId: selectedRecordId,
-      workReport: workReport || undefined,
+      workReport: workReport,
       companionEmployeeIds: companionIds.length > 0 ? companionIds : undefined,
     });
   };
@@ -298,7 +302,7 @@ export default function ClockOut() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <FileText className="h-4 w-4 text-muted-foreground" />
-                  作業日報（任意）
+                  作業日報 <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   placeholder="本日の作業内容を入力してください..."
@@ -316,7 +320,7 @@ export default function ClockOut() {
                 <Button
                   className={`flex-1 text-base font-semibold bg-red-500 hover:bg-red-600 text-white${isMobile ? " h-20 text-xl font-bold sticky bottom-0 shadow-xl active:shadow-md active:translate-y-0.5 transition-all duration-100" : " h-12"}`}
                   onClick={handleSubmit}
-                  disabled={clockOutMutation.isPending}
+                  disabled={clockOutMutation.isPending || !workReport.trim()}
                 >
                   {clockOutMutation.isPending ? (
                     <span className="flex items-center gap-2">
