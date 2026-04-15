@@ -4,19 +4,11 @@ import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
 
+// 実働時間計算（昼休憩60分を差し引く）
 function calcWorkingMinutes(clockInStr: string, clockOut: Date): number {
   const clockIn = new Date(clockInStr);
-  const totalMs = clockOut.getTime() - clockIn.getTime();
-  const totalMinutes = Math.floor(totalMs / 60000);
-  const breakStart = new Date(clockIn); breakStart.setHours(12, 0, 0, 0);
-  const breakEnd = new Date(clockIn); breakEnd.setHours(13, 0, 0, 0);
-  let breakMinutes = 0;
-  if (clockIn < breakEnd && clockOut > breakStart) {
-    const overlapStart = clockIn > breakStart ? clockIn : breakStart;
-    const overlapEnd = clockOut < breakEnd ? clockOut : breakEnd;
-    breakMinutes = Math.max(0, Math.floor((overlapEnd.getTime() - overlapStart.getTime()) / 60000));
-  }
-  return Math.max(0, totalMinutes - breakMinutes);
+  const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
+  return Math.max(0, totalMinutes - 60);
 }
 
 const iso = (d: Date) => d.toISOString();

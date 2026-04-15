@@ -12,8 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, Clock, Filter, Search, Trash2, Users } from "lucide-react";
+import { ClipboardList, Clock, Filter, Search, Trash2, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+
+const PAGE_SIZE = 10;
 
 function minutesToHHMM(min: number | null | undefined) {
   if (!min) return "-";
@@ -42,6 +44,7 @@ export default function Records() {
   }, []);
   const [filterSiteId, setFilterSiteId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [queryParams, setQueryParams] = useState({
     startDate: firstOfMonth,
     endDate: today,
@@ -84,9 +87,11 @@ export default function Records() {
       employeeId: filterEmployeeId !== "all" ? Number(filterEmployeeId) : undefined,
       siteId: filterSiteId !== "all" ? Number(filterSiteId) : undefined,
     });
+    setCurrentPage(1);
   };
 
   const filteredRecords = useMemo(() => {
+    setCurrentPage(1);
     if (!records) return [];
     if (!searchQuery) return records;
     const q = searchQuery.toLowerCase();
@@ -99,6 +104,11 @@ export default function Records() {
   }, [records, searchQuery]);
 
   const totalMinutes = filteredRecords.reduce((sum, r) => sum + (r.workingMinutes ?? 0), 0);
+
+  const totalPages = Math.ceil(filteredRecords.length / PAGE_SIZE);
+  const paginatedRecords = filteredRecords.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const rangeStart = filteredRecords.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * PAGE_SIZE, filteredRecords.length);
 
   return (
     <div className="space-y-6">
@@ -194,7 +204,7 @@ export default function Records() {
       {filteredRecords.length > 0 && (
         <div className="flex flex-wrap items-center gap-4 px-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{filteredRecords.length}件の記録</span>
+            <span>全{filteredRecords.length}件中 {rangeStart}〜{rangeEnd}件を表示</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-primary" />
@@ -243,7 +253,7 @@ export default function Records() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRecords.map((record) => (
+                  {paginatedRecords.map((record) => (
                     <tr
                       key={record.id}
                       className="border-b border-border/50 hover:bg-muted/20 transition-colors"
@@ -318,6 +328,57 @@ export default function Records() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* ページネーション */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+              <span className="text-xs text-muted-foreground">
+                {currentPage} / {totalPages} ページ
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .reduce((acc, p, idx, arr) => {
+                    if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === "..." ? (
+                      <span key={"e" + i} className="px-1 text-xs text-muted-foreground">…</span>
+                    ) : (
+                      <Button
+                        key={p}
+                        variant={currentPage === p ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 w-8 p-0 text-xs"
+                        onClick={() => setCurrentPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    )
+                  )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

@@ -6,18 +6,11 @@ import { correctionRequests, attendanceRecords, employeeMaster, siteMaster } fro
 
 const iso = (d: Date) => d.toISOString();
 
+// 実働時間計算（昼休憩60分を差し引く）
 function calcWorkingMinutes(clockInStr: string, clockOutStr: string): number {
   const clockIn = new Date(clockInStr), clockOut = new Date(clockOutStr);
   const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
-  const breakStart = new Date(clockIn); breakStart.setHours(12, 0, 0, 0);
-  const breakEnd = new Date(clockIn); breakEnd.setHours(13, 0, 0, 0);
-  let breakMinutes = 0;
-  if (clockIn < breakEnd && clockOut > breakStart) {
-    const s = clockIn > breakStart ? clockIn : breakStart;
-    const e = clockOut < breakEnd ? clockOut : breakEnd;
-    breakMinutes = Math.max(0, Math.floor((e.getTime() - s.getTime()) / 60000));
-  }
-  return Math.max(0, totalMinutes - breakMinutes);
+  return Math.max(0, totalMinutes - 60);
 }
 
 export const correctionRouter = router({
@@ -142,6 +135,18 @@ export const correctionRouter = router({
       if (rows[0].status !== "pending") throw new Error("この申請は既に処理済みです");
       const now = iso(new Date());
       await db.update(correctionRequests).set({ status: "rejected", approvedBy: ctx.user.id, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
+      return { success: true };
+    }),
+
+  // 訂正申請削除（管理者のみ・処理済みのみ）
+  deleteCorrectionRequest: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const rows = await db.select().from(correctionRequests).where(eq(correctionRequests.id, input.id)).limit(1);
+      if (rows.length === 0) throw new Error('申請が見つかりません');
+      if (rows[0].status === 'pending') throw new Error('審査中の申請は削除できません');
+      await db.delete(correctionRequests).where(eq(correctionRequests.id, input.id));
       return { success: true };
     }),
 });

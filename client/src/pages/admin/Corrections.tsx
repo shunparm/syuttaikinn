@@ -14,13 +14,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Shield, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Shield, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 const correctionTypeLabels: Record<string, string> = {
-  clock_in: "出勤時刻の修正",
-  clock_out: "退勤時刻の修正",
+  time_correction: "時刻の修正",
   cancel: "記録のキャンセル",
+  site_change: "現場の変更",
+  other: "その他",
 };
 
 type CorrectionRequest = {
@@ -45,7 +46,7 @@ export default function AdminCorrections() {
   const [, setLocation] = useLocation();
   const [selectedRequest, setSelectedRequest] = useState<CorrectionRequest | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [dialogType, setDialogType] = useState<"approve" | "reject" | null>(null);
+  const [dialogType, setDialogType] = useState<"approve" | "reject" | "delete" | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
 
   const { data: requests, refetch } = trpc.correction.listAllCorrectionRequests.useQuery();
@@ -73,6 +74,17 @@ export default function AdminCorrections() {
     onError: (err) => toast.error(err.message || "却下に失敗しました"),
   });
 
+  const deleteMutation = trpc.correction.deleteCorrectionRequest.useMutation({
+    onSuccess: () => {
+      setDialogType(null);
+      setSelectedRequest(null);
+      refetch();
+      setSavedMsg("申請記録を削除しました");
+      setTimeout(() => setSavedMsg(""), 3000);
+    },
+    onError: (err) => toast.error(err.message || "削除に失敗しました"),
+  });
+
   if (user?.role !== "admin") {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -97,6 +109,11 @@ export default function AdminCorrections() {
     setSelectedRequest(req);
     setRejectReason("");
     setDialogType("reject");
+  };
+
+  const openDelete = (req: CorrectionRequest) => {
+    setSelectedRequest(req);
+    setDialogType("delete");
   };
 
   const statusBadge = (status: string) => {
@@ -229,6 +246,7 @@ export default function AdminCorrections() {
                       <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">種別</th>
                       <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">理由</th>
                       <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">状態</th>
+                      <th className="py-3 px-4"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -243,6 +261,16 @@ export default function AdminCorrections() {
                         </td>
                         <td className="py-3 px-4 text-muted-foreground max-w-48 truncate">{req.reason}</td>
                         <td className="py-3 px-4">{statusBadge(req.status)}</td>
+                        <td className="py-3 px-4">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => openDelete(req as CorrectionRequest)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -339,6 +367,45 @@ export default function AdminCorrections() {
               disabled={rejectMutation.isPending}
             >
               {rejectMutation.isPending ? "処理中..." : "却下する"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog open={dialogType === "delete"} onOpenChange={(o) => !o && setDialogType(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>申請記録の削除</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">この申請記録を削除しますか？</p>
+            {selectedRequest && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">申請者</span>
+                  <span className="font-medium">{selectedRequest.employeeName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">種別</span>
+                  <span className="font-medium">
+                    {correctionTypeLabels[selectedRequest.correctionType] ?? selectedRequest.correctionType}
+                  </span>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-destructive">この操作は取り消せません。</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogType(null)}>
+              キャンセル
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => selectedRequest && deleteMutation.mutate({ id: selectedRequest.id })}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "削除中..." : "削除する"}
             </Button>
           </DialogFooter>
         </DialogContent>
