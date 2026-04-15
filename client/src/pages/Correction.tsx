@@ -53,6 +53,7 @@ export default function Correction() {
   const [reason, setReason] = useState("");
   const [newClockInTime, setNewClockInTime] = useState("");
   const [newClockOutTime, setNewClockOutTime] = useState("");
+  const [newSiteId, setNewSiteId] = useState<string>("");
   const [saved, setSaved] = useState(false);
 
   const { lang, toggle, t } = useLang();
@@ -62,6 +63,7 @@ export default function Correction() {
     lang === "id" && emp.nameKana ? emp.nameKana : emp.name;
 
   const { data: employees } = trpc.master.listEmployees.useQuery();
+  const { data: sites } = trpc.master.listSites.useQuery();
 
   const { data: records } = trpc.correction.getRecordsByEmployee.useQuery(
     { employeeId: Number(selectedEmployeeId) },
@@ -81,6 +83,7 @@ export default function Correction() {
       setReason("");
       setNewClockInTime("");
       setNewClockOutTime("");
+      setNewSiteId("");
       setSaved(true);
       setTimeout(() => setSaved(false), 4000);
     },
@@ -108,6 +111,7 @@ export default function Correction() {
       correctionType,
       newClockInTime: newClockInTime ? new Date(newClockInTime) : undefined,
       newClockOutTime: newClockOutTime ? new Date(newClockOutTime) : undefined,
+      newSiteId: newSiteId ? Number(newSiteId) : undefined,
     });
   };
 
@@ -318,6 +322,7 @@ export default function Correction() {
                     setCorrectionType(v as typeof correctionType);
                     setNewClockInTime("");
                     setNewClockOutTime("");
+                    setNewSiteId("");
                   }}
                 >
                   <SelectTrigger className="h-11">
@@ -353,6 +358,31 @@ export default function Correction() {
                       onChange={(e) => setNewClockOutTime(e.target.value)}
                       className="h-11"
                     />
+                  </div>
+                </div>
+              )}
+
+              {/* 現場変更（site_change選択時のみ） */}
+              {correctionType === "site_change" && (
+                <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border/50">
+                  <p className="text-xs text-muted-foreground">変更先の現場を選択してください</p>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      新しい現場
+                    </Label>
+                    <Select value={newSiteId} onValueChange={setNewSiteId}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="現場を選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sites?.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {s.siteName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}

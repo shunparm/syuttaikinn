@@ -70,7 +70,6 @@ export async function initDb() {
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
       ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS "isCorrected" BOOLEAN NOT NULL DEFAULT false;
-      ALTER TABLE correction_requests ADD COLUMN IF NOT EXISTS "newSiteId" INTEGER REFERENCES site_master(id);
       CREATE TABLE IF NOT EXISTS correction_requests (
         id SERIAL PRIMARY KEY,
         "attendanceRecordId" INTEGER NOT NULL REFERENCES attendance_records(id),
@@ -85,6 +84,7 @@ export async function initDb() {
         "createdAt" TEXT NOT NULL DEFAULT now()::text,
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
+      ALTER TABLE correction_requests ADD COLUMN IF NOT EXISTS "newSiteId" INTEGER REFERENCES site_master(id);
     `);
   } finally {
     client.release();
