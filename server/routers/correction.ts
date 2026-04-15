@@ -6,11 +6,15 @@ import { correctionRequests, attendanceRecords, employeeMaster, siteMaster } fro
 
 const iso = (d: Date) => d.toISOString();
 
-// 実働時間計算（昼休憩60分を差し引く）
+// 実働時間計算（12:00〜13:00 の重複分を差し引く）
 function calcWorkingMinutes(clockInStr: string, clockOutStr: string): number {
   const clockIn = new Date(clockInStr), clockOut = new Date(clockOutStr);
   const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
-  return Math.max(0, totalMinutes - 60);
+  const breakStart = new Date(clockIn); breakStart.setHours(12, 0, 0, 0);
+  const breakEnd   = new Date(clockIn); breakEnd.setHours(13, 0, 0, 0);
+  const overlapMs  = Math.max(0, Math.min(clockOut.getTime(), breakEnd.getTime()) - Math.max(clockIn.getTime(), breakStart.getTime()));
+  const overlapMin = Math.floor(overlapMs / 60000);
+  return Math.max(0, totalMinutes - overlapMin);
 }
 
 export const correctionRouter = router({
