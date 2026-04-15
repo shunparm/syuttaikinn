@@ -17,6 +17,7 @@ export default function ClockOut() {
   const [workReport, setWorkReport] = useState("");
   const [companionIds, setCompanionIds] = useState<number[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+  const [reportError, setReportError] = useState("");
   const [showAnim, setShowAnim] = useState(false);
   const [clockOutTime, setClockOutTime] = useState("");
   const [clockInTimeForCalc, setClockInTimeForCalc] = useState<string | null>(null);
@@ -71,6 +72,11 @@ export default function ClockOut() {
       return;
     }
     setErrorMsg("");
+    if (!workReport || workReport.trim() === "") {
+      setReportError("作業日報を入力してください");
+      return;
+    }
+    setReportError("");
     if (selectedWorker?.clockInTime) {
       setClockInTimeForCalc(selectedWorker.clockInTime);
     }
@@ -305,12 +311,15 @@ export default function ClockOut() {
                   作業日報 <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
-                  placeholder="本日の作業内容を入力してください..."
+                  placeholder="本日の作業内容を入力してください（必須）"
                   value={workReport}
-                  onChange={(e) => setWorkReport(e.target.value)}
+                  onChange={(e) => { setWorkReport(e.target.value); if (reportError) setReportError(""); }}
                   rows={4}
                   className="resize-none"
                 />
+                {reportError && (
+                  <p className="text-sm text-red-500">{reportError}</p>
+                )}
               </div>
 
               <div className="flex gap-3">

@@ -55,7 +55,7 @@ export const attendanceRouter = router({
   clockOut: publicProcedure
     .input(z.object({
       attendanceRecordId: z.number(),
-      workReport: z.string().optional(),
+      workReport: z.string().min(1, "作業日報を入力してください"),
       companionEmployeeIds: z.array(z.number()).optional(),
     }))
     .mutation(async ({ input }) => {

@@ -64,8 +64,8 @@ export const correctionRouter = router({
       await db.insert(correctionRequests).values({
         attendanceRecordId: input.attendanceRecordId, employeeId: input.employeeId,
         reason: input.reason, correctionType: input.correctionType,
-        newClockInTime: input.newClockInTime ? iso(input.newClockInTime) : null,
-        newClockOutTime: input.newClockOutTime ? iso(input.newClockOutTime) : null,
+        newClockInTime: (input.newClockInTime != null) ? iso(input.newClockInTime) : null,
+        newClockOutTime: (input.newClockOutTime != null) ? iso(input.newClockOutTime) : null,
         newSiteId: input.newSiteId ?? null,
         status: "pending",
       });

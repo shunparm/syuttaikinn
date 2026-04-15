@@ -105,6 +105,9 @@ export default function Correction() {
   const selectedRecord = records?.find((r) => r.id === Number(selectedRecordId));
   const selectedEmployee = employees?.find((e) => e.id === Number(selectedEmployeeId));
 
+  const hasClockIn  = !!(newClockInDate  && newClockInTimeStr);
+  const hasClockOut = !!(newClockOutDate && newClockOutTimeStr);
+
   const handleSubmit = () => {
     if (!selectedEmployeeId || !selectedRecordId || !reason) {
       toast.error(t("必須項目を入力してください", "Harap isi semua kolom wajib"));
@@ -129,7 +132,7 @@ export default function Correction() {
       correctionType,
       newClockInTime: (correctionType === "clock_in_modify" || correctionType === "time_correction") ? combineDT(newClockInDate, newClockInTimeStr) : undefined,
       newClockOutTime: (correctionType === "clock_out_modify" || correctionType === "time_correction") ? combineDT(newClockOutDate, newClockOutTimeStr) : undefined,
-      newSiteId: newSiteId ? Number(newSiteId) : undefined,
+      newSiteId: correctionType === "site_change" && newSiteId ? Number(newSiteId) : undefined,
     });
   };
 
@@ -380,27 +383,6 @@ export default function Correction() {
                   <p className="text-xs text-muted-foreground">新しい退勤時刻を入力してください</p>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t("新しい退勤時刻", "Waktu pulang baru")} <span className="text-destructive">*</span></Label>
-                    <div className="flex gap-2">
-                      <Input type="date" value={newClockOutDate} onChange={(e) => setNewClockOutDate(e.target.value)} className="h-11 flex-1" />
-                      <Input type="time" value={newClockOutTimeStr} onChange={(e) => setNewClockOutTimeStr(e.target.value)} className="h-11 w-28" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 時刻入力（旧time_correction - legacy） */}
-              {correctionType === "time_correction" && (
-                <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border/50">
-                  <p className="text-xs text-muted-foreground">修正する時刻を入力してください（片方のみでも可）</p>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{t("新しい出勤時刻", "Waktu masuk baru")}</Label>
-                    <div className="flex gap-2">
-                      <Input type="date" value={newClockInDate} onChange={(e) => setNewClockInDate(e.target.value)} className="h-11 flex-1" />
-                      <Input type="time" value={newClockInTimeStr} onChange={(e) => setNewClockInTimeStr(e.target.value)} className="h-11 w-28" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{t("新しい退勤時刻", "Waktu pulang baru")}</Label>
                     <div className="flex gap-2">
                       <Input type="date" value={newClockOutDate} onChange={(e) => setNewClockOutDate(e.target.value)} className="h-11 flex-1" />
                       <Input type="time" value={newClockOutTimeStr} onChange={(e) => setNewClockOutTimeStr(e.target.value)} className="h-11 w-28" />
