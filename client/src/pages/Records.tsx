@@ -236,7 +236,58 @@ export default function Records() {
               <p className="text-muted-foreground">該当する記録がありません</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              {/* ページネーション */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                  <span className="text-xs text-muted-foreground">
+                    {currentPage} / {totalPages} ページ
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .reduce((acc, p, idx, arr) => {
+                        if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        p === "..." ? (
+                          <span key={"e" + i} className="px-1 text-xs text-muted-foreground">…</span>
+                        ) : (
+                          <Button
+                            key={p}
+                            variant={currentPage === p ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 w-8 p-0 text-xs"
+                            onClick={() => setCurrentPage(p)}
+                          >
+                            {p}
+                          </Button>
+                        )
+                      )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
@@ -328,58 +379,8 @@ export default function Records() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-
-          {/* ページネーション */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
-              <span className="text-xs text-muted-foreground">
-                {currentPage} / {totalPages} ページ
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                  .reduce((acc, p, idx, arr) => {
-                    if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((p, i) =>
-                    p === "..." ? (
-                      <span key={"e" + i} className="px-1 text-xs text-muted-foreground">…</span>
-                    ) : (
-                      <Button
-                        key={p}
-                        variant={currentPage === p ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 w-8 p-0 text-xs"
-                        onClick={() => setCurrentPage(p)}
-                      >
-                        {p}
-                      </Button>
-                    )
-                  )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
               </div>
-            </div>
+            </>
           )}
         </CardContent>
       </Card>
