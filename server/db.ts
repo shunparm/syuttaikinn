@@ -92,6 +92,30 @@ export async function initDb() {
       ALTER TABLE correction_requests ALTER COLUMN "newSiteId" DROP NOT NULL;
       ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check;
       ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'clock_in_modify', 'clock_out_modify'));
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='correction_requests'
+          AND column_name='newClockInTime'
+        ) THEN
+          ALTER TABLE correction_requests ADD COLUMN "newClockInTime" TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='correction_requests'
+          AND column_name='newClockOutTime'
+        ) THEN
+          ALTER TABLE correction_requests ADD COLUMN "newClockOutTime" TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='correction_requests'
+          AND column_name='newSiteId'
+        ) THEN
+          ALTER TABLE correction_requests ADD COLUMN "newSiteId" INTEGER REFERENCES site_master(id);
+        END IF;
+      END $$;
     `);
   } finally {
     client.release();
