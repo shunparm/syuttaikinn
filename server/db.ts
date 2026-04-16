@@ -91,7 +91,7 @@ export async function initDb() {
       ALTER TABLE correction_requests ALTER COLUMN "newClockOutTime" DROP NOT NULL;
       ALTER TABLE correction_requests ALTER COLUMN "newSiteId" DROP NOT NULL;
       ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check;
-      ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'clock_in_modify', 'clock_out_modify'));
+      ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other'));
       DO $$
       BEGIN
         IF NOT EXISTS (
