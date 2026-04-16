@@ -83,17 +83,19 @@ export default function Correction() {
 
   const createMutation = trpc.correction.createCorrectionRequest.useMutation({
     onSuccess: () => {
-      refetchRequests();
-      setStep("select-employee");
-      setSelectedEmployeeId("");
-      setSelectedRecordId("");
-      setCorrectionType("cancel");
-      setReason("");
-      setNewClockInDate(""); setNewClockInTimeStr("");
-      setNewClockOutDate(""); setNewClockOutTimeStr("");
-      setNewSiteId("");
       setSaved(true);
-      setTimeout(() => setSaved(false), 4000);
+      setTimeout(() => {
+        refetchRequests();
+        setStep("select-employee");
+        setSelectedEmployeeId("");
+        setSelectedRecordId("");
+        setCorrectionType("cancel");
+        setReason("");
+        setNewClockInDate(""); setNewClockInTimeStr("");
+        setNewClockOutDate(""); setNewClockOutTimeStr("");
+        setNewSiteId("");
+        setTimeout(() => setSaved(false), 4000);
+      }, 300);
     },
     onError: (err) => {
       toast.error(err.message || t("申請の送信に失敗しました", "Gagal mengirim permohonan"));
