@@ -136,8 +136,6 @@ export default function Correction() {
     });
   };
 
-  const hasClockIn  = !!(newClockInDate  && newClockInTimeStr);
-  const hasClockOut = !!(newClockOutDate && newClockOutTimeStr);
   const isFormValid =
     selectedEmployeeId &&
     selectedRecordId &&
