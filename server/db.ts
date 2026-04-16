@@ -84,6 +84,8 @@ export async function initDb() {
         "createdAt" TEXT NOT NULL DEFAULT now()::text,
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
+      ALTER TABLE correction_requests ADD COLUMN IF NOT EXISTS "newClockInTime" TEXT;
+      ALTER TABLE correction_requests ADD COLUMN IF NOT EXISTS "newClockOutTime" TEXT;
       ALTER TABLE correction_requests ADD COLUMN IF NOT EXISTS "newSiteId" INTEGER REFERENCES site_master(id);
       ALTER TABLE correction_requests ALTER COLUMN "newClockInTime" DROP NOT NULL;
       ALTER TABLE correction_requests ALTER COLUMN "newClockOutTime" DROP NOT NULL;
