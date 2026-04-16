@@ -61,12 +61,17 @@ export const correctionRouter = router({
       const existing = await db.select().from(correctionRequests)
         .where(and(eq(correctionRequests.attendanceRecordId, input.attendanceRecordId), eq(correctionRequests.status, "pending"))).limit(1);
       if (existing.length > 0) throw new Error("この記録には既に申請中の訂正申請があります");
+      const ct = input.correctionType;
       await db.insert(correctionRequests).values({
-        attendanceRecordId: input.attendanceRecordId, employeeId: input.employeeId,
-        reason: input.reason, correctionType: input.correctionType,
-        newClockInTime: (input.newClockInTime != null) ? iso(input.newClockInTime) : null,
-        newClockOutTime: (input.newClockOutTime != null) ? iso(input.newClockOutTime) : null,
-        newSiteId: input.newSiteId ?? null,
+        attendanceRecordId: input.attendanceRecordId,
+        employeeId: input.employeeId,
+        reason: input.reason,
+        correctionType: ct,
+        newClockInTime: (ct === "clock_in_modify" || ct === "time_correction") && input.newClockInTime != null
+          ? iso(input.newClockInTime) : null,
+        newClockOutTime: (ct === "clock_out_modify" || ct === "time_correction") && input.newClockOutTime != null
+          ? iso(input.newClockOutTime) : null,
+        newSiteId: ct === "site_change" ? (input.newSiteId ?? null) : null,
         status: "pending",
       });
       const rows = await db.select().from(correctionRequests)
