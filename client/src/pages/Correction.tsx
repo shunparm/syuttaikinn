@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,10 +103,43 @@ export default function Correction() {
   const selectedRecord = records?.find((r) => r.id === Number(selectedRecordId));
   const selectedEmployee = employees?.find((e) => e.id === Number(selectedEmployeeId));
 
+  // time_correction 選択時 & レコード選択時に既存の日付を自動セット（日付忘れ防止）
+  useEffect(() => {
+    if (correctionType !== "time_correction" || !selectedRecord) return;
+    const toJSTDate = (isoStr: string) => {
+      const jst = new Date(new Date(isoStr).getTime() + 9 * 60 * 60 * 1000);
+      return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, "0")}-${String(jst.getUTCDate()).padStart(2, "0")}`;
+    };
+    setNewClockInDate(toJSTDate(selectedRecord.clockInTime));
+    setNewClockInTimeStr("");
+    if (selectedRecord.clockOutTime) {
+      setNewClockOutDate(toJSTDate(selectedRecord.clockOutTime));
+      setNewClockOutTimeStr("");
+    }
+  }, [selectedRecordId, correctionType]);
+
   const handleSubmit = () => {
     if (!selectedEmployeeId || !selectedRecordId || !reason) {
       toast.error(t("必須項目を入力してください", "Harap isi semua kolom wajib"));
       return;
+    }
+    if (correctionType === "time_correction") {
+      if (newClockInDate && !newClockInTimeStr) {
+        toast.error(t("出勤時刻の時分を入力してください", "Masukkan jam/menit waktu masuk"));
+        return;
+      }
+      if (!newClockInDate && newClockInTimeStr) {
+        toast.error(t("出勤時刻の日付を入力してください", "Masukkan tanggal waktu masuk"));
+        return;
+      }
+      if (newClockOutDate && !newClockOutTimeStr) {
+        toast.error(t("退勤時刻の時分を入力してください", "Masukkan jam/menit waktu pulang"));
+        return;
+      }
+      if (!newClockOutDate && newClockOutTimeStr) {
+        toast.error(t("退勤時刻の日付を入力してください", "Masukkan tanggal waktu pulang"));
+        return;
+      }
     }
     if (correctionType === "time_correction" && !hasClockIn && !hasClockOut) {
       toast.error(t("修正する時刻を少なくとも1つ入力してください", "Masukkan setidaknya satu waktu yang ingin dikoreksi"));
