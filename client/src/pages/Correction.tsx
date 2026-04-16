@@ -58,6 +58,14 @@ export default function Correction() {
   const [newSiteId, setNewSiteId] = useState<string>("");
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    if (sessionStorage.getItem("correctionSuccess")) {
+      sessionStorage.removeItem("correctionSuccess");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 4000);
+    }
+  }, []);
+
   // date(YYYY-MM-DD) + time(HH:mm) → Date in JST
   const combineDT = (date: string, time: string): Date | undefined => {
     if (!date || !time) return undefined;
@@ -78,24 +86,13 @@ export default function Correction() {
     { enabled: !!selectedEmployeeId }
   );
 
-  const { data: myRequests, refetch: refetchRequests } =
+  const { data: myRequests } =
     trpc.correction.listCorrectionRequests.useQuery({ status: "pending" });
 
   const createMutation = trpc.correction.createCorrectionRequest.useMutation({
     onSuccess: () => {
-      setSaved(true);
-      setTimeout(() => {
-        refetchRequests();
-        setStep("select-employee");
-        setSelectedEmployeeId("");
-        setSelectedRecordId("");
-        setCorrectionType("cancel");
-        setReason("");
-        setNewClockInDate(""); setNewClockInTimeStr("");
-        setNewClockOutDate(""); setNewClockOutTimeStr("");
-        setNewSiteId("");
-        setTimeout(() => setSaved(false), 4000);
-      }, 300);
+      sessionStorage.setItem("correctionSuccess", "1");
+      window.location.reload();
     },
     onError: (err) => {
       toast.error(err.message || t("申請の送信に失敗しました", "Gagal mengirim permohonan"));
