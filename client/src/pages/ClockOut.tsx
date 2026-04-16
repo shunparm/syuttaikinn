@@ -68,11 +68,6 @@ export default function ClockOut() {
   const handleSubmit = () => {
     if (!selectedRecordId) return;
     if (!workReport.trim()) {
-      setErrorMsg("作業日報を入力してください");
-      return;
-    }
-    setErrorMsg("");
-    if (!workReport || workReport.trim() === "") {
       setReportError("作業日報を入力してください");
       return;
     }

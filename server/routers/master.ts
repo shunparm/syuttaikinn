@@ -10,7 +10,7 @@ export const masterRouter = router({
     .input(z.object({ includeInactive: z.boolean().optional().default(false) }).optional())
     .query(async ({ input }) => {
       const db = getDb();
-      const rows = await db.select().from(employeeMaster).orderBy(sql`CAST(${employeeMaster.employeeId} AS INTEGER)`);
+      const rows = await db.select().from(employeeMaster).orderBy(sql`CASE WHEN ${employeeMaster.employeeId} ~ '^[0-9]+$' THEN CAST(${employeeMaster.employeeId} AS INTEGER) ELSE 2147483647 END, ${employeeMaster.employeeId}`);
       if (input?.includeInactive) return rows;
       return rows.filter((r) => r.status === "active");
     }),

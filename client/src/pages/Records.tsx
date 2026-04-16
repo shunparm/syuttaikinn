@@ -93,7 +93,6 @@ export default function Records() {
   };
 
   const filteredRecords = useMemo(() => {
-    setCurrentPage(1);
     if (!records) return [];
     if (!searchQuery) return records;
     const q = searchQuery.toLowerCase();
@@ -103,6 +102,10 @@ export default function Records() {
         r.siteName.toLowerCase().includes(q) ||
         (r.workReport ?? "").toLowerCase().includes(q)
     );
+  }, [records, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
   }, [records, searchQuery]);
 
   const totalMinutes = filteredRecords.reduce((sum, r) => sum + (r.workingMinutes ?? 0), 0);
