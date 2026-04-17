@@ -12,7 +12,11 @@ import { startNotificationScheduler } from "../notificationScheduler";
 async function startServer() {
   // DB初期化（テーブル作成）
   await initDb();
-  startNotificationScheduler();
+  try {
+    startNotificationScheduler();
+  } catch (e) {
+    console.error("[Push] Failed to start notification scheduler:", e);
+  }
 
   const app = express();
   const server = createServer(app);
@@ -36,7 +40,7 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = parseInt(process.env.PORT ?? "3000", 10) || 3000;
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
