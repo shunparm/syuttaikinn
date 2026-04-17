@@ -23,11 +23,13 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useMobile";
+import { usePushNotification } from "@/hooks/usePushNotification";
 import {
   BarChart3,
+  Bell,
+  BellOff,
   BookOpen,
   Building2,
-  Clock,
   Download,
   FilePen,
   HardHat,
@@ -131,6 +133,7 @@ function DashboardLayoutContent({
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const loginUrl = useLoginUrl();
+  const { permission, isSubscribed, isLoading: notifLoading, subscribe, unsubscribe } = usePushNotification();
 
   const handleLogout = async () => {
     await logout();
@@ -306,6 +309,30 @@ function DashboardLayoutContent({
                     <p className="text-sm font-medium">{user.name}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
+                  <DropdownMenuSeparator />
+                  {permission !== "unsupported" && (
+                    <DropdownMenuItem
+                      onClick={isSubscribed ? unsubscribe : subscribe}
+                      disabled={notifLoading || permission === "denied"}
+                      className="cursor-pointer"
+                    >
+                      {isSubscribed ? (
+                        <>
+                          <BellOff className="mr-2 h-4 w-4" />
+                          <span>通知をオフにする</span>
+                        </>
+                      ) : (
+                        <>
+                          <Bell className="mr-2 h-4 w-4" />
+                          <span>
+                            {permission === "denied"
+                              ? "通知がブロックされています"
+                              : "出退勤リマインダーを受け取る"}
+                          </span>
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}

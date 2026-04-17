@@ -10,6 +10,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       includeAssets: ["icon.svg", "icon-192x192.png", "icon-512x512.png", "favicon.png"],
       manifest: {
         name: "東輝 出退勤管理",
@@ -40,21 +43,12 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,svg,woff2}"],
-        runtimeCaching: [
-          {
-            urlPattern: /^\/api\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-cache",
-              networkTimeoutSeconds: 5,
-            },
-          },
-        ],
       },
       devOptions: {
         enabled: true,
+        type: "module",
       },
     }),
   ],
