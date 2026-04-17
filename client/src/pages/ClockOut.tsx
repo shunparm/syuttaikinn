@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { HardHat, Clock, MapPin, FileText, Users, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useLang } from "@/hooks/useLang";
+import { NotificationBanner } from "@/components/NotificationBanner";
 
 type Step = "select-employee" | "clock-out-form";
 
@@ -143,6 +144,7 @@ export default function ClockOut() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6" translate="no">
+      <NotificationBanner />
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
