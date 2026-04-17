@@ -1,4 +1,4 @@
-import cron from "node-cron";
+import { schedule } from "node-cron";
 import webpush from "web-push";
 import { pool } from "./db";
 
@@ -62,7 +62,7 @@ export function startNotificationScheduler() {
   if (!initWebPush()) return;
 
   // 平日（月〜金）の8:00に出勤リマインダー
-  cron.schedule("0 8 * * 1-5", () => {
+  schedule("0 8 * * 1-5", () => {
     sendNotificationToAll(
       "出勤打刻のお知らせ",
       "出勤打刻をお忘れなく！",
@@ -71,7 +71,7 @@ export function startNotificationScheduler() {
   }, { timezone: "Asia/Tokyo" });
 
   // 平日（月〜金）の17:00に退勤リマインダー
-  cron.schedule("0 17 * * 1-5", () => {
+  schedule("0 17 * * 1-5", () => {
     sendNotificationToAll(
       "退勤打刻のお知らせ",
       "退勤打刻をお忘れなく！",

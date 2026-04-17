@@ -310,29 +310,29 @@ function DashboardLayoutContent({
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  {permission !== "unsupported" && (
-                    <DropdownMenuItem
-                      onClick={isSubscribed ? unsubscribe : subscribe}
-                      disabled={notifLoading || permission === "denied"}
-                      className="cursor-pointer"
-                    >
-                      {isSubscribed ? (
-                        <>
-                          <BellOff className="mr-2 h-4 w-4" />
-                          <span>通知をオフにする</span>
-                        </>
-                      ) : (
-                        <>
-                          <Bell className="mr-2 h-4 w-4" />
-                          <span>
-                            {permission === "denied"
-                              ? "通知がブロックされています"
-                              : "出退勤リマインダーを受け取る"}
-                          </span>
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem
+                    onClick={isSubscribed ? unsubscribe : subscribe}
+                    disabled={notifLoading || permission === "denied" || permission === "unsupported"}
+                    className="cursor-pointer"
+                  >
+                    {isSubscribed ? (
+                      <>
+                        <BellOff className="mr-2 h-4 w-4" />
+                        <span>通知をオフにする</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="mr-2 h-4 w-4" />
+                        <span>
+                          {permission === "denied"
+                            ? "通知がブロックされています"
+                            : permission === "unsupported"
+                            ? "この端末では通知を利用できません"
+                            : "出退勤リマインダーを受け取る"}
+                        </span>
+                      </>
+                    )}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
