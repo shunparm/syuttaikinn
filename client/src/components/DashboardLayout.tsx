@@ -344,15 +344,32 @@ function DashboardLayoutContent({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              // 未ログイン時（PIN認証ページ用）: 管理者ログインボタンを表示
+              // 未ログイン時（PIN認証ページ用）
               !isCollapsed && (
-                <button
-                  onClick={() => { window.location.href = loginUrl; }}
-                  className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent/60 transition-colors w-full text-left focus:outline-none text-xs text-sidebar-foreground/60 disabled:opacity-50"
-                >
-                  <Shield className="h-4 w-4 shrink-0" />
-                  <span>管理者ログイン</span>
-                </button>
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={isSubscribed ? unsubscribe : subscribe}
+                    disabled={notifLoading || permission === "denied" || permission === "unsupported"}
+                    className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent/60 transition-colors w-full text-left focus:outline-none text-xs text-sidebar-foreground/60 disabled:opacity-50"
+                  >
+                    {isSubscribed ? (
+                      <><BellOff className="h-4 w-4 shrink-0" /><span>通知をオフ</span></>
+                    ) : (
+                      <><Bell className="h-4 w-4 shrink-0" /><span>
+                        {permission === "denied" ? "通知がブロックされています" :
+                         permission === "unsupported" ? "通知非対応" :
+                         "打刻リマインダーを受け取る"}
+                      </span></>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { window.location.href = loginUrl; }}
+                    className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent/60 transition-colors w-full text-left focus:outline-none text-xs text-sidebar-foreground/60"
+                  >
+                    <Shield className="h-4 w-4 shrink-0" />
+                    <span>管理者ログイン</span>
+                  </button>
+                </div>
               )
             )}
           </SidebarFooter>
@@ -381,6 +398,14 @@ function DashboardLayoutContent({
                 </span>
               </div>
             </div>
+            <button
+              onClick={isSubscribed ? unsubscribe : subscribe}
+              disabled={notifLoading || permission === "denied" || permission === "unsupported"}
+              title={isSubscribed ? "通知をオフにする" : "打刻リマインダーを受け取る"}
+              className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors disabled:opacity-40"
+            >
+              {isSubscribed ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+            </button>
           </div>
         )}
         <main className="flex-1 p-4 md:p-6">{children}</main>

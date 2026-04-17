@@ -61,23 +61,23 @@ async function sendNotificationToAll(title: string, body: string, url = "/") {
 export function startNotificationScheduler() {
   if (!initWebPush()) return;
 
-  // 平日（月〜金）の8:00に出勤リマインダー
-  schedule("0 8 * * 1-5", () => {
+  // 平日 8:00 JST = 前日 23:00 UTC（日〜木）
+  schedule("0 23 * * 0-4", () => {
     sendNotificationToAll(
       "出勤打刻のお知らせ",
       "出勤打刻をお忘れなく！",
       "/clock-in"
     ).catch(console.error);
-  }, { timezone: "Asia/Tokyo" });
+  });
 
-  // 平日（月〜金）の17:00に退勤リマインダー
-  schedule("0 17 * * 1-5", () => {
+  // 平日 17:00 JST = 同日 8:00 UTC（月〜金）
+  schedule("0 8 * * 1-5", () => {
     sendNotificationToAll(
       "退勤打刻のお知らせ",
       "退勤打刻をお忘れなく！",
       "/clock-out"
     ).catch(console.error);
-  }, { timezone: "Asia/Tokyo" });
+  });
 
   console.log("[Push] Notification scheduler started (weekdays 08:00 / 17:00 JST)");
 }
