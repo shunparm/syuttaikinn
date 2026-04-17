@@ -7,6 +7,7 @@ import { attendanceRouter } from "./routers/attendance";
 import { correctionRouter } from "./routers/correction";
 import { exportRouter } from "./routers/export";
 import { usersRouter } from "./routers/users";
+import { pushNotificationRouter } from "./routers/pushNotification";
 
 export const appRouter = router({
   system: systemRouter,
@@ -33,6 +34,9 @@ export const appRouter = router({
 
   // ユーザー管理
   users: usersRouter,
+
+  // プッシュ通知
+  push: pushNotificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

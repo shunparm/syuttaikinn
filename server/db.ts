@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { InsertUser, users } from "../drizzle/schema";
 
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
@@ -92,6 +92,14 @@ export async function initDb() {
       ALTER TABLE correction_requests ALTER COLUMN "newSiteId" DROP NOT NULL;
       ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check;
       ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other'));
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        "userId" TEXT,
+        "createdAt" TEXT NOT NULL DEFAULT now()::text
+      );
       DO $$
       BEGIN
         IF NOT EXISTS (

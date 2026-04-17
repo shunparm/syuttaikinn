@@ -7,10 +7,12 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { initDb } from "../db";
+import { startNotificationScheduler } from "../notificationScheduler";
 
 async function startServer() {
   // DB初期化（テーブル作成）
   await initDb();
+  startNotificationScheduler();
 
   const app = express();
   const server = createServer(app);
@@ -34,7 +36,7 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
