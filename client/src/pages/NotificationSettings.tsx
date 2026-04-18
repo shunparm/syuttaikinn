@@ -86,9 +86,9 @@ export default function NotificationSettings() {
               variant={isSubscribed ? "outline" : "default"}
               size="sm"
               onClick={isSubscribed ? unsubscribe : subscribe}
-              disabled={isLoading || permission === "denied" || permission === "unsupported" || (!isSubscribed && !vapidReady)}
+              disabled={isLoading || permission === "denied" || permission === "unsupported"}
             >
-              {isLoading ? "処理中..." : isSubscribed ? "OFFにする" : !vapidReady ? "準備中..." : "ONにする"}
+              {isLoading ? "処理中..." : isSubscribed ? "OFFにする" : vapidLoading ? "読込中..." : "ONにする"}
             </Button>
           </div>
         </CardContent>
