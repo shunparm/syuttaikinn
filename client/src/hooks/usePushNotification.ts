@@ -16,10 +16,13 @@ export function usePushNotification() {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { data: vapidData, isLoading: vapidLoading } = trpc.push.getVapidPublicKey.useQuery();
   const subscribeMutation = trpc.push.subscribe.useMutation();
   const unsubscribeMutation = trpc.push.unsubscribe.useMutation();
+
+  const vapidReady = !vapidLoading && !!vapidData?.publicKey;
 
   useEffect(() => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
@@ -36,11 +39,19 @@ export function usePushNotification() {
   }, []);
 
   const subscribe = useCallback(async () => {
-    if (!vapidData?.publicKey) return;
+    setError(null);
+    if (!vapidData?.publicKey) {
+      setError("サーバーの設定が読み込めません。ページを再読み込みしてください。");
+      return;
+    }
     setIsLoading(true);
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm as NotificationPermission);
+      if (perm === "denied") {
+        setError("通知がブロックされました。ブラウザの設定から許可してください。");
+        return;
+      }
       if (perm !== "granted") return;
 
       const reg = await navigator.serviceWorker.ready;
@@ -65,6 +76,8 @@ export function usePushNotification() {
         keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
       });
       setIsSubscribed(true);
+    } catch (e) {
+      setError(`通知の設定に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +100,5 @@ export function usePushNotification() {
     }
   }, [unsubscribeMutation]);
 
-  const vapidReady = !vapidLoading && !!vapidData?.publicKey;
-
-  return { permission, isSubscribed, isLoading, vapidReady, subscribe, unsubscribe };
+  return { permission, isSubscribed, isLoading, vapidReady, error, subscribe, unsubscribe };
 }
