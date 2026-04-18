@@ -10,7 +10,7 @@ import { toast } from "sonner";
 export default function NotificationSettings() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "staff";
-  const { permission, isSubscribed, isLoading, vapidReady, error, subscribe, unsubscribe } = usePushNotification();
+  const { permission, isSubscribed, isLoading, vapidLoading, error, subscribe, unsubscribe } = usePushNotification();
 
   const { data: config, refetch } = trpc.push.getConfig.useQuery();
   const updateConfigMutation = trpc.push.updateConfig.useMutation({
