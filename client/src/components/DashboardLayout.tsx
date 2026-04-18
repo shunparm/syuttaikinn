@@ -23,11 +23,8 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useMobile";
-import { usePushNotification } from "@/hooks/usePushNotification";
 import {
   BarChart3,
-  Bell,
-  BellOff,
   BookOpen,
   Building2,
   Download,
@@ -135,7 +132,6 @@ function DashboardLayoutContent({
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const loginUrl = useLoginUrl();
-  const { permission, isSubscribed, isLoading: notifLoading, subscribe, unsubscribe } = usePushNotification();
 
   const handleLogout = async () => {
     await logout();
@@ -206,7 +202,7 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           {/* メインメニュー */}
-          <SidebarContent className="gap-0 py-2">
+          <SidebarContent className="gap-0 py-2 overflow-y-auto">
             <SidebarGroup>
               {!isCollapsed && (
                 <SidebarGroupLabel className="text-sidebar-foreground/40 text-xs px-4 mb-1">
@@ -313,30 +309,6 @@ function DashboardLayoutContent({
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={isSubscribed ? unsubscribe : subscribe}
-                    disabled={notifLoading || permission === "denied" || permission === "unsupported"}
-                    className="cursor-pointer"
-                  >
-                    {isSubscribed ? (
-                      <>
-                        <BellOff className="mr-2 h-4 w-4" />
-                        <span>通知をオフにする</span>
-                      </>
-                    ) : (
-                      <>
-                        <Bell className="mr-2 h-4 w-4" />
-                        <span>
-                          {permission === "denied"
-                            ? "通知がブロックされています"
-                            : permission === "unsupported"
-                            ? "この端末では通知を利用できません"
-                            : "出退勤リマインダーを受け取る"}
-                        </span>
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
                     onClick={handleLogout}
                     className="cursor-pointer text-destructive focus:text-destructive"
                   >
@@ -348,30 +320,13 @@ function DashboardLayoutContent({
             ) : (
               // 未ログイン時（PIN認証ページ用）
               !isCollapsed && (
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={isSubscribed ? unsubscribe : subscribe}
-                    disabled={notifLoading || permission === "denied" || permission === "unsupported"}
-                    className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent/60 transition-colors w-full text-left focus:outline-none text-xs text-sidebar-foreground/60 disabled:opacity-50"
-                  >
-                    {isSubscribed ? (
-                      <><BellOff className="h-4 w-4 shrink-0" /><span>通知をオフ</span></>
-                    ) : (
-                      <><Bell className="h-4 w-4 shrink-0" /><span>
-                        {permission === "denied" ? "通知がブロックされています" :
-                         permission === "unsupported" ? "通知非対応" :
-                         "打刻リマインダーを受け取る"}
-                      </span></>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => { window.location.href = loginUrl; }}
-                    className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent/60 transition-colors w-full text-left focus:outline-none text-xs text-sidebar-foreground/60"
-                  >
-                    <Shield className="h-4 w-4 shrink-0" />
-                    <span>管理者ログイン</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => { window.location.href = loginUrl; }}
+                  className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent/60 transition-colors w-full text-left focus:outline-none text-xs text-sidebar-foreground/60"
+                >
+                  <Shield className="h-4 w-4 shrink-0" />
+                  <span>管理者ログイン</span>
+                </button>
               )
             )}
           </SidebarFooter>
@@ -390,24 +345,14 @@ function DashboardLayoutContent({
       <SidebarInset>
         {/* モバイルヘッダー */}
         {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-4 backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-3">
-              <SidebarTrigger className="h-9 w-9 rounded-lg" />
-              <div className="flex items-center gap-2">
-                <HardHat className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-sm text-foreground">
-                  {activeItem?.label ?? "出退勤管理"}
-                </span>
-              </div>
+          <div className="flex border-b h-14 items-center bg-background/95 px-4 backdrop-blur sticky top-0 z-40 gap-3">
+            <SidebarTrigger className="h-9 w-9 rounded-lg" />
+            <div className="flex items-center gap-2">
+              <HardHat className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-sm text-foreground">
+                {activeItem?.label ?? "出退勤管理"}
+              </span>
             </div>
-            <button
-              onClick={isSubscribed ? unsubscribe : subscribe}
-              disabled={notifLoading || permission === "denied" || permission === "unsupported"}
-              title={isSubscribed ? "通知をオフにする" : "打刻リマインダーを受け取る"}
-              className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors disabled:opacity-40"
-            >
-              {isSubscribed ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
-            </button>
           </div>
         )}
         <main className="flex-1 p-4 md:p-6">{children}</main>
