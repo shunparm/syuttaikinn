@@ -19,7 +19,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Shield, User, Users, AlertTriangle } from "lucide-react";
+import { Bell, Shield, User, Users, AlertTriangle } from "lucide-react";
 
 export default function AdminUsers() {
   const { user: currentUser } = useAuth();
@@ -59,6 +59,10 @@ export default function AdminUsers() {
 
   const adminCount = userList?.filter((u) => u.role === "admin").length ?? 0;
   const userCount = userList?.filter((u) => u.role === "user").length ?? 0;
+  const sendTestMutation = trpc.push.sendTest.useMutation({
+    onSuccess: () => toast.success("テスト通知を送信しました"),
+    onError: (e) => toast.error(`送信失敗: ${e.message}`),
+  });
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -72,6 +76,27 @@ export default function AdminUsers() {
           ログインユーザーの一覧と管理者権限の付与・剥奪を行います
         </p>
       </div>
+
+      {/* 通知テスト */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-4 w-4 text-sky-500" />
+            プッシュ通知テスト
+          </CardTitle>
+          <CardDescription>通知を受け取る設定をした全員に今すぐテスト送信します</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => sendTestMutation.mutate()}
+            disabled={sendTestMutation.isPending}
+          >
+            {sendTestMutation.isPending ? "送信中..." : "テスト通知を送信"}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* 成功バナー */}
       {savedMsg && (

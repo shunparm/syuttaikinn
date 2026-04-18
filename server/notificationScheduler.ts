@@ -16,7 +16,8 @@ function initWebPush() {
   return true;
 }
 
-async function sendNotificationToAll(title: string, body: string, url = "/") {
+export async function sendNotificationToAll(title: string, body: string, url = "/") {
+  initWebPush();
   const conn = await pool.connect();
   let rows: { endpoint: string; p256dh: string; auth: string }[] = [];
   try {
