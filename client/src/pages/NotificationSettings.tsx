@@ -94,37 +94,43 @@ export default function NotificationSettings() {
         </CardContent>
       </Card>
 
-      {/* 時刻設定（管理者のみ） */}
-      {isAdmin && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              通知時刻の設定
-            </CardTitle>
-            <CardDescription>管理者のみ変更できます（日本時間・平日のみ送信）</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">出勤リマインダー</label>
-                <input
-                  type="time"
-                  value={clockInTime}
-                  onChange={e => setClockInTime(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">退勤リマインダー</label>
-                <input
-                  type="time"
-                  value={clockOutTime}
-                  onChange={e => setClockOutTime(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
+      {/* 通知時刻の表示（全ユーザー）・編集（管理者のみ） */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            通知時刻
+          </CardTitle>
+          <CardDescription>
+            {isAdmin ? "管理者のみ変更できます（日本時間・平日のみ送信）" : "平日のみ送信されます（日本時間）"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">出勤リマインダー</label>
+              <input
+                type="time"
+                value={clockInTime}
+                onChange={e => setClockInTime(e.target.value)}
+                readOnly={!isAdmin}
+                disabled={!isAdmin}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              />
             </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">退勤リマインダー</label>
+              <input
+                type="time"
+                value={clockOutTime}
+                onChange={e => setClockOutTime(e.target.value)}
+                readOnly={!isAdmin}
+                disabled={!isAdmin}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+          {isAdmin && (
             <Button
               onClick={() => updateConfigMutation.mutate({ clockInTime, clockOutTime })}
               disabled={updateConfigMutation.isPending}
@@ -132,9 +138,9 @@ export default function NotificationSettings() {
             >
               {updateConfigMutation.isPending ? "保存中..." : "時刻を保存"}
             </Button>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* テスト送信（管理者のみ） */}
       {isAdmin && (
