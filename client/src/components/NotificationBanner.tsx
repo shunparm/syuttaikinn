@@ -3,7 +3,7 @@ import { useState } from "react";
 import { usePushNotification } from "@/hooks/usePushNotification";
 
 export function NotificationBanner() {
-  const { permission, isSubscribed, isLoading, vapidReady, error, subscribe } = usePushNotification();
+  const { permission, isSubscribed, isLoading, vapidLoading, vapidData, vapidReady, error, subscribe } = usePushNotification();
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;
@@ -12,7 +12,13 @@ export function NotificationBanner() {
   if (permission === "granted") return null;
 
   const buttonDisabled = isLoading || !vapidReady;
-  const buttonLabel = isLoading ? "設定中..." : !vapidReady ? "準備中..." : "受け取る";
+  const buttonLabel = isLoading
+    ? "設定中..."
+    : vapidLoading
+    ? "読込中..."
+    : !vapidData?.publicKey
+    ? "キー未設定"
+    : "受け取る";
 
   return (
     <div className="space-y-1">

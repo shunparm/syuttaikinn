@@ -100,5 +100,5 @@ export function usePushNotification() {
     }
   }, [unsubscribeMutation]);
 
-  return { permission, isSubscribed, isLoading, vapidReady, error, subscribe, unsubscribe };
+  return { permission, isSubscribed, isLoading, vapidLoading, vapidData, vapidReady, error, subscribe, unsubscribe };
 }
