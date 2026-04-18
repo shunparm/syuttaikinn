@@ -19,6 +19,7 @@ import AdminSites from "./pages/admin/Sites";
 import AdminCorrections from "./pages/admin/Corrections";
 import AdminUsers from "./pages/admin/Users";
 import Login from "./pages/Login";
+import NotificationSettings from "./pages/NotificationSettings";
 
 // PIN認証ページは未ログインでもアクセス可能なラッパー（DashboardLayoutの認証チェックをバイパス）
 function PublicPinLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ function Router() {
       {/* 認証不要ページ */}
       <Route path="/">{() => <PublicPinLayout><Home /></PublicPinLayout>}</Route>
       <Route path="/records">{() => <PublicPinLayout><Records /></PublicPinLayout>}</Route>
+      <Route path="/notification-settings">{() => <PublicPinLayout><NotificationSettings /></PublicPinLayout>}</Route>
       {/* その他のページ: ログイン必須 */}
       <Route>
         {() => (

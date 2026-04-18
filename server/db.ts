@@ -124,6 +124,14 @@ export async function initDb() {
           ALTER TABLE correction_requests ADD COLUMN "newSiteId" INTEGER REFERENCES site_master(id);
         END IF;
       END $$;
+      CREATE TABLE IF NOT EXISTS notification_config (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        clock_in_time TEXT NOT NULL DEFAULT '08:00',
+        clock_out_time TEXT NOT NULL DEFAULT '17:00'
+      );
+      INSERT INTO notification_config (id, clock_in_time, clock_out_time)
+      VALUES (1, '08:00', '17:00')
+      ON CONFLICT (id) DO NOTHING;
     `);
   } finally {
     client.release();

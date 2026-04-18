@@ -44,12 +44,35 @@ export const pushNotificationRouter = router({
       return { success: true };
     }),
 
+  getConfig: publicProcedure.query(async () => {
+    const conn = await pool.connect();
+    try {
+      const result = await conn.query<{ clock_in_time: string; clock_out_time: string }>(
+        `SELECT clock_in_time, clock_out_time FROM notification_config WHERE id = 1`
+      );
+      return result.rows[0] ?? { clock_in_time: "08:00", clock_out_time: "17:00" };
+    } finally {
+      conn.release();
+    }
+  }),
+
+  updateConfig: adminProcedure
+    .input(z.object({ clockInTime: z.string(), clockOutTime: z.string() }))
+    .mutation(async ({ input }) => {
+      const conn = await pool.connect();
+      try {
+        await conn.query(
+          `UPDATE notification_config SET clock_in_time = $1, clock_out_time = $2 WHERE id = 1`,
+          [input.clockInTime, input.clockOutTime]
+        );
+      } finally {
+        conn.release();
+      }
+      return { success: true };
+    }),
+
   sendTest: adminProcedure.mutation(async () => {
-    await sendNotificationToAll(
-      "テスト通知",
-      "通知の動作確認です。正常に届いています！",
-      "/clock-in"
-    );
+    await sendNotificationToAll("テスト通知", "通知の動作確認です。正常に届いています！", "/clock-in");
     return { success: true };
   }),
 });

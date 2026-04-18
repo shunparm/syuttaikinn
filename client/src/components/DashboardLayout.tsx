@@ -36,6 +36,7 @@ import {
   LogIn,
   LogOut,
   PanelLeft,
+  Settings2,
   Shield,
   Users,
   UserCog,
@@ -54,6 +55,7 @@ const workerMenuItems = [
   { icon: HardHat, label: "作業中/Sedang bekerja", path: "/active-workers", iconColor: "text-amber-500" },
   { icon: BookOpen, label: "出勤簿/Buku daftar hadir", path: "/records", iconColor: "text-emerald-500" },
   { icon: FilePen, label: "修正/Permohonan koreksi", path: "/correction", iconColor: "text-orange-500" },
+  { icon: Settings2, label: "通知設定", path: "/notification-settings", iconColor: "text-sky-500" },
 ];
 
 const adminMenuItems = [
