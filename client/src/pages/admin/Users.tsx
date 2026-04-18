@@ -19,7 +19,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Bell, Shield, User, Users, AlertTriangle } from "lucide-react";
+import { Bell, LogIn, LogOut, Shield, User, Users, AlertTriangle } from "lucide-react";
+
+type NotifyDialog = {
+  open: boolean;
+  openId: string;
+  userName: string;
+  type: "clock-in" | "clock-out" | null;
+};
 
 export default function AdminUsers() {
   const { user: currentUser } = useAuth();
@@ -30,8 +37,11 @@ export default function AdminUsers() {
     userName: string;
     newRole: "admin" | "user";
   } | null>(null);
+  const [notifyDialog, setNotifyDialog] = useState<NotifyDialog | null>(null);
 
   const { data: userList, isLoading, refetch } = trpc.users.listUsers.useQuery();
+  const { data: subscribedIds = [] } = trpc.push.getSubscribedUserIds.useQuery();
+
   const updateRoleMutation = trpc.users.updateRole.useMutation({
     onSuccess: () => {
       refetch();
@@ -45,24 +55,38 @@ export default function AdminUsers() {
     },
   });
 
+  const sendToUserMutation = trpc.push.sendToUser.useMutation({
+    onSuccess: (data) => {
+      setNotifyDialog(null);
+      if (data.sent > 0) {
+        toast.success("催促通知を送信しました");
+      } else {
+        toast.error("送信できる端末が見つかりませんでした。通知をONにしていない可能性があります。");
+      }
+    },
+    onError: (e) => toast.error(`送信失敗: ${e.message}`),
+  });
+
   const handleRoleChange = (userId: number, userName: string, newRole: "admin" | "user") => {
     setConfirmDialog({ open: true, userId, userName, newRole });
   };
 
   const confirmRoleChange = () => {
     if (!confirmDialog) return;
-    updateRoleMutation.mutate({
-      userId: confirmDialog.userId,
-      role: confirmDialog.newRole,
-    });
+    updateRoleMutation.mutate({ userId: confirmDialog.userId, role: confirmDialog.newRole });
+  };
+
+  const openNotifyDialog = (openId: string, userName: string) => {
+    setNotifyDialog({ open: true, openId, userName, type: null });
+  };
+
+  const confirmNotify = () => {
+    if (!notifyDialog?.type) return;
+    sendToUserMutation.mutate({ openId: notifyDialog.openId, type: notifyDialog.type });
   };
 
   const adminCount = userList?.filter((u) => u.role === "admin").length ?? 0;
-  const userCount = userList?.filter((u) => u.role === "user").length ?? 0;
-  const sendTestMutation = trpc.push.sendTest.useMutation({
-    onSuccess: () => toast.success("テスト通知を送信しました"),
-    onError: (e) => toast.error(`送信失敗: ${e.message}`),
-  });
+  const userCount  = userList?.filter((u) => u.role === "user").length ?? 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -73,30 +97,9 @@ export default function AdminUsers() {
           ユーザー管理
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          ログインユーザーの一覧と管理者権限の付与・剥奪を行います
+          ログインユーザーの一覧と管理者権限の付与・剥奪、打刻催促通知の送信を行います
         </p>
       </div>
-
-      {/* 通知テスト */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bell className="h-4 w-4 text-sky-500" />
-            プッシュ通知テスト
-          </CardTitle>
-          <CardDescription>通知を受け取る設定をした全員に今すぐテスト送信します</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => sendTestMutation.mutate()}
-            disabled={sendTestMutation.isPending}
-          >
-            {sendTestMutation.isPending ? "送信中..." : "テスト通知を送信"}
-          </Button>
-        </CardContent>
-      </Card>
 
       {/* 成功バナー */}
       {savedMsg && (
@@ -136,7 +139,8 @@ export default function AdminUsers() {
         <CardHeader className="pb-4">
           <CardTitle className="text-base">ログインユーザー一覧</CardTitle>
           <CardDescription>
-            Manusアカウントでログインしたユーザーの一覧です。管理者権限の付与・剥奪ができます。
+            <Bell className="h-3 w-3 inline mr-1 text-sky-500" />
+            アイコンが表示されているユーザーには打刻催促通知を個別送信できます。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -155,6 +159,7 @@ export default function AdminUsers() {
             <div className="space-y-2">
               {userList.map((u) => {
                 const isSelf = currentUser?.id === u.id;
+                const hasSubscription = subscribedIds.includes(u.openId);
                 return (
                   <div
                     key={u.id}
@@ -176,6 +181,9 @@ export default function AdminUsers() {
                               あなた
                             </Badge>
                           )}
+                          {hasSubscription && (
+                            <Bell className="h-3 w-3 text-sky-500 flex-shrink-0" />
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
                           {u.email ?? u.openId}
@@ -194,7 +202,19 @@ export default function AdminUsers() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* 催促通知ボタン（購読済みユーザーのみ） */}
+                      {hasSubscription && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-8 text-sky-600 border-sky-200 hover:bg-sky-50"
+                          onClick={() => openNotifyDialog(u.openId, u.name ?? "このユーザー")}
+                        >
+                          <Bell className="h-3 w-3 mr-1" />
+                          催促
+                        </Button>
+                      )}
                       <Badge
                         variant={u.role === "admin" ? "default" : "secondary"}
                         className={
@@ -256,7 +276,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* 確認ダイアログ */}
+      {/* ロール変更確認ダイアログ */}
       {confirmDialog && (
         <Dialog open={confirmDialog.open} onOpenChange={() => setConfirmDialog(null)}>
           <DialogContent className="max-w-sm">
@@ -285,6 +305,60 @@ export default function AdminUsers() {
                 }
               >
                 {updateRoleMutation.isPending ? "変更中..." : "変更する"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 催促通知ダイアログ */}
+      {notifyDialog && (
+        <Dialog open={notifyDialog.open} onOpenChange={() => setNotifyDialog(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-sky-500" />
+                打刻催促通知を送る
+              </DialogTitle>
+              <DialogDescription>
+                <span className="font-semibold text-foreground">{notifyDialog.userName}</span>{" "}
+                さんに送る催促の種類を選んでください。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <button
+                onClick={() => setNotifyDialog(d => d ? { ...d, type: "clock-in" } : d)}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                  notifyDialog.type === "clock-in"
+                    ? "border-sky-500 bg-sky-50 text-sky-700"
+                    : "border-border hover:border-sky-300 hover:bg-sky-50/50"
+                }`}
+              >
+                <LogIn className="h-6 w-6" />
+                <span className="text-sm font-medium">出勤催促</span>
+              </button>
+              <button
+                onClick={() => setNotifyDialog(d => d ? { ...d, type: "clock-out" } : d)}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                  notifyDialog.type === "clock-out"
+                    ? "border-red-500 bg-red-50 text-red-700"
+                    : "border-border hover:border-red-300 hover:bg-red-50/50"
+                }`}
+              >
+                <LogOut className="h-6 w-6" />
+                <span className="text-sm font-medium">退勤催促</span>
+              </button>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setNotifyDialog(null)}>
+                キャンセル
+              </Button>
+              <Button
+                onClick={confirmNotify}
+                disabled={!notifyDialog.type || sendToUserMutation.isPending}
+                className="bg-sky-600 hover:bg-sky-700 text-white"
+              >
+                {sendToUserMutation.isPending ? "送信中..." : "送信する"}
               </Button>
             </DialogFooter>
           </DialogContent>
