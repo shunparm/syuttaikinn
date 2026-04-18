@@ -12,6 +12,16 @@ import { startNotificationScheduler } from "../notificationScheduler";
 async function startServer() {
   // DB初期化（テーブル作成）
   await initDb();
+
+  // VAPIDキー確認ログ
+  const vapidPub = process.env.VAPID_PUBLIC_KEY;
+  const vapidPrv = process.env.VAPID_PRIVATE_KEY;
+  if (vapidPub && vapidPrv) {
+    console.log(`[Push] VAPID keys found. Public key length: ${vapidPub.length}`);
+  } else {
+    console.warn(`[Push] VAPID keys NOT set. VAPID_PUBLIC_KEY=${!!vapidPub} VAPID_PRIVATE_KEY=${!!vapidPrv}`);
+  }
+
   try {
     startNotificationScheduler();
   } catch (e) {
@@ -25,6 +35,19 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // 社内パスワード認証ルート
   registerAuthRoutes(app);
+
+  // VAPID設定確認エンドポイント（診断用）
+  app.get("/api/push-status", (_req, res) => {
+    const pub = process.env.VAPID_PUBLIC_KEY;
+    const prv = process.env.VAPID_PRIVATE_KEY;
+    res.json({
+      vapidPublicKeySet: !!pub,
+      vapidPrivateKeySet: !!prv,
+      publicKeyLength: pub?.length ?? 0,
+      publicKeyPrefix: pub ? pub.substring(0, 10) + "..." : null,
+    });
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

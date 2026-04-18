@@ -10,7 +10,7 @@ import { toast } from "sonner";
 export default function NotificationSettings() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "staff";
-  const { permission, isSubscribed, isLoading, vapidLoading, error, subscribe, unsubscribe } = usePushNotification();
+  const { permission, isSubscribed, isLoading, vapidLoading, vapidError, vapidData, error, subscribe, unsubscribe } = usePushNotification();
 
   const { data: config, refetch } = trpc.push.getConfig.useQuery();
   const updateConfigMutation = trpc.push.updateConfig.useMutation({
@@ -62,6 +62,17 @@ export default function NotificationSettings() {
           {permission === "denied" && (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
               通知がブロックされています。ブラウザの設定から通知を「許可」にしてください。
+            </p>
+          )}
+          {vapidError && !error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              サーバーとの接続エラー: {vapidError.message}。ページを再読み込みしてください。
+            </p>
+          )}
+          {!vapidError && !vapidLoading && !vapidData?.publicKey && (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              サーバーのVAPIDキーが未設定です。RenderのEnvironment Variablesで <code className="font-mono text-xs">VAPID_PUBLIC_KEY</code> を確認してください。
+              確認URL: <code className="font-mono text-xs break-all">/api/push-status</code>
             </p>
           )}
           {error && (

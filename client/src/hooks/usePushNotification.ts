@@ -18,7 +18,12 @@ export function usePushNotification() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: vapidData, isLoading: vapidLoading } = trpc.push.getVapidPublicKey.useQuery();
+  const {
+    data: vapidData,
+    isLoading: vapidLoading,
+    error: vapidError,
+  } = trpc.push.getVapidPublicKey.useQuery(undefined, { retry: 1 });
+
   const subscribeMutation = trpc.push.subscribe.useMutation();
   const unsubscribeMutation = trpc.push.unsubscribe.useMutation();
 
@@ -40,8 +45,12 @@ export function usePushNotification() {
 
   const subscribe = useCallback(async () => {
     setError(null);
+    if (vapidError) {
+      setError(`サーバーとの通信に失敗しました: ${vapidError.message}`);
+      return;
+    }
     if (!vapidData?.publicKey) {
-      setError("サーバーの設定が読み込めません。ページを再読み込みしてください。");
+      setError("VAPIDキーが設定されていません。Renderの環境変数 VAPID_PUBLIC_KEY を確認してください。");
       return;
     }
     setIsLoading(true);
@@ -81,7 +90,7 @@ export function usePushNotification() {
     } finally {
       setIsLoading(false);
     }
-  }, [vapidData, subscribeMutation]);
+  }, [vapidData, vapidError, subscribeMutation]);
 
   const unsubscribe = useCallback(async () => {
     setIsLoading(true);
@@ -100,5 +109,5 @@ export function usePushNotification() {
     }
   }, [unsubscribeMutation]);
 
-  return { permission, isSubscribed, isLoading, vapidLoading, vapidData, vapidReady, error, subscribe, unsubscribe };
+  return { permission, isSubscribed, isLoading, vapidLoading, vapidError, vapidData, vapidReady, error, subscribe, unsubscribe };
 }
