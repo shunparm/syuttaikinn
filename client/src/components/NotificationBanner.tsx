@@ -9,7 +9,6 @@ export function NotificationBanner() {
   if (dismissed) return null;
   if (permission === "unsupported") return null;
   if (isSubscribed) return null;
-  if (permission === "granted") return null;
 
   const buttonDisabled = isLoading || !vapidReady;
   const buttonLabel = isLoading
