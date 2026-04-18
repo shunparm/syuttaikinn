@@ -3,13 +3,16 @@ import { useState } from "react";
 import { usePushNotification } from "@/hooks/usePushNotification";
 
 export function NotificationBanner() {
-  const { permission, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotification();
+  const { permission, isSubscribed, isLoading, vapidReady, subscribe } = usePushNotification();
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;
   if (permission === "unsupported") return null;
   if (isSubscribed) return null;
   if (permission === "granted") return null;
+
+  const buttonDisabled = isLoading || !vapidReady;
+  const buttonLabel = isLoading ? "設定中..." : !vapidReady ? "準備中..." : "受け取る";
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm">
@@ -22,10 +25,10 @@ export function NotificationBanner() {
       {permission !== "denied" && (
         <button
           onClick={subscribe}
-          disabled={isLoading}
-          className="shrink-0 rounded-md bg-sky-500 px-3 py-1 text-xs font-medium text-white hover:bg-sky-600 disabled:opacity-50"
+          disabled={buttonDisabled}
+          className="shrink-0 rounded-md bg-sky-500 px-3 py-1 text-xs font-medium text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? "設定中..." : "受け取る"}
+          {buttonLabel}
         </button>
       )}
       <button onClick={() => setDismissed(true)} className="shrink-0 text-sky-400 hover:text-sky-600">

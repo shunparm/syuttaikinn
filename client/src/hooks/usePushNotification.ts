@@ -17,7 +17,7 @@ export function usePushNotification() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { data: vapidData } = trpc.push.getVapidPublicKey.useQuery();
+  const { data: vapidData, isLoading: vapidLoading } = trpc.push.getVapidPublicKey.useQuery();
   const subscribeMutation = trpc.push.subscribe.useMutation();
   const unsubscribeMutation = trpc.push.unsubscribe.useMutation();
 
@@ -87,5 +87,7 @@ export function usePushNotification() {
     }
   }, [unsubscribeMutation]);
 
-  return { permission, isSubscribed, isLoading, subscribe, unsubscribe };
+  const vapidReady = !vapidLoading && !!vapidData?.publicKey;
+
+  return { permission, isSubscribed, isLoading, vapidReady, subscribe, unsubscribe };
 }
