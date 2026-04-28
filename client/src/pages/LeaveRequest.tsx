@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,14 +55,6 @@ export default function LeaveRequest() {
   const { lang, toggle, t } = useLang();
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    if (sessionStorage.getItem("leaveRequestSuccess")) {
-      sessionStorage.removeItem("leaveRequestSuccess");
-      setSaved(true);
-      setTimeout(() => setSaved(false), 4000);
-    }
-  }, []);
-
   const displayName = (emp: { name: string; nameKana?: string | null }) =>
     lang === "id" && emp.nameKana ? emp.nameKana : emp.name;
 
@@ -76,7 +68,6 @@ export default function LeaveRequest() {
 
   const createMutation = trpc.leaveRequest.create.useMutation({
     onSuccess: () => {
-      sessionStorage.setItem("leaveRequestSuccess", "1");
       refetchRequests();
       setRequestDate("");
       setReason("");

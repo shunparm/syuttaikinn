@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { Building2, Clock, HardHat, LogIn, LogOut, TrendingUp, Users } from "lucide-react";
+import { Building2, CalendarDays, Clock, HardHat, LogIn, LogOut, TrendingUp, Users } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useLang } from "@/hooks/useLang";
@@ -211,7 +211,7 @@ export default function Home() {
 
       {/* クイックアクション（PCのみ） */}
       {!isMobile && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card
             className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
             onClick={() => setLocation("/clock-in")}
@@ -237,6 +237,20 @@ export default function Home() {
               <div>
                 <p className="font-semibold text-foreground">退勤申請</p>
                 <p className="text-xs text-muted-foreground mt-0.5">業務報告を入力して退勤</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card
+            className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+            onClick={() => setLocation("/leave-request")}
+          >
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-green-50 group-hover:bg-green-100 transition-colors">
+                <CalendarDays className="h-6 w-6 text-green-500" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">休暇申請</p>
+                <p className="text-xs text-muted-foreground mt-0.5">有給・代休・休日希望を申請</p>
               </div>
             </CardContent>
           </Card>
