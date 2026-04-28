@@ -27,6 +27,7 @@ import {
   BarChart3,
   BookOpen,
   Building2,
+  CalendarDays,
   Download,
   FilePen,
   HardHat,
@@ -52,6 +53,7 @@ const workerMenuItems = [
   { icon: HardHat, label: "作業中/Sedang bekerja", path: "/active-workers", iconColor: "text-amber-500" },
   { icon: BookOpen, label: "出勤簿/Buku daftar hadir", path: "/records", iconColor: "text-emerald-500" },
   { icon: FilePen, label: "修正/Permohonan koreksi", path: "/correction", iconColor: "text-orange-500" },
+  { icon: CalendarDays, label: "休暇申請/Permohonan cuti", path: "/leave-request", iconColor: "text-green-500" },
   { icon: Settings2, label: "通知設定", path: "/notification-settings", iconColor: "text-sky-500" },
 ];
 
@@ -59,6 +61,7 @@ const adminMenuItems = [
   { icon: Users, label: "作業員管理", path: "/admin/employees" },
   { icon: Building2, label: "現場管理", path: "/admin/sites" },
   { icon: Shield, label: "訂正申請管理", path: "/admin/corrections" },
+  { icon: CalendarDays, label: "休暇申請管理", path: "/admin/leave-requests" },
   { icon: Download, label: "CSV出力", path: "/export" },
   { icon: UserCog, label: "ユーザー管理", path: "/admin/users" },
 ];

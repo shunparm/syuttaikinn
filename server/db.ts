@@ -132,6 +132,19 @@ export async function initDb() {
       INSERT INTO notification_config (id, clock_in_time, clock_out_time)
       VALUES (1, '08:00', '17:00')
       ON CONFLICT (id) DO NOTHING;
+      CREATE TABLE IF NOT EXISTS leave_requests (
+        id SERIAL PRIMARY KEY,
+        "employeeId" INTEGER NOT NULL REFERENCES employee_master(id),
+        "leaveType" TEXT NOT NULL CHECK("leaveType" IN ('paid_leave', 'substitute_holiday', 'special_leave', 'holiday_request')),
+        "requestDate" TEXT NOT NULL,
+        reason TEXT,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+        "approvedBy" INTEGER REFERENCES employee_master(id),
+        "approvedAt" TEXT,
+        note TEXT,
+        "createdAt" TEXT NOT NULL DEFAULT now()::text,
+        "updatedAt" TEXT NOT NULL DEFAULT now()::text
+      );
     `);
   } finally {
     client.release();

@@ -13,10 +13,12 @@ import ClockOut from "./pages/ClockOut";
 import ActiveWorkers from "./pages/ActiveWorkers";
 import Records from "./pages/Records";
 import Correction from "./pages/Correction";
+import LeaveRequest from "./pages/LeaveRequest";
 import Export from "./pages/Export";
 import AdminEmployees from "./pages/admin/Employees";
 import AdminSites from "./pages/admin/Sites";
 import AdminCorrections from "./pages/admin/Corrections";
+import AdminLeaveRequests from "./pages/admin/LeaveRequests";
 import AdminUsers from "./pages/admin/Users";
 import Login from "./pages/Login";
 import NotificationSettings from "./pages/NotificationSettings";
@@ -38,6 +40,7 @@ function Router() {
       <Route path="/clock-in">{() => <PublicPinLayout><ClockIn /></PublicPinLayout>}</Route>
       <Route path="/clock-out">{() => <PublicPinLayout><ClockOut /></PublicPinLayout>}</Route>
       <Route path="/correction">{() => <PublicPinLayout><Correction /></PublicPinLayout>}</Route>
+      <Route path="/leave-request">{() => <PublicPinLayout><LeaveRequest /></PublicPinLayout>}</Route>
       {/* 認証不要ページ */}
       <Route path="/">{() => <PublicPinLayout><Home /></PublicPinLayout>}</Route>
       <Route path="/records">{() => <PublicPinLayout><Records /></PublicPinLayout>}</Route>
@@ -52,6 +55,7 @@ function Router() {
               <Route path="/admin/employees" component={AdminEmployees} />
               <Route path="/admin/sites" component={AdminSites} />
               <Route path="/admin/corrections" component={AdminCorrections} />
+              <Route path="/admin/leave-requests" component={AdminLeaveRequests} />
               <Route path="/admin/users" component={AdminUsers} />
               <Route path="/404" component={NotFound} />
               <Route component={NotFound} />
