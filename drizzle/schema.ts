@@ -87,3 +87,21 @@ export const correctionRequests = pgTable("correction_requests", {
 
 export type CorrectionRequest = typeof correctionRequests.$inferSelect;
 export type InsertCorrectionRequest = typeof correctionRequests.$inferInsert;
+
+// ─── 休暇申請 ────────────────────────────────────────────────────────────────
+export const leaveRequests = pgTable("leave_requests", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employeeId").notNull().references(() => employeeMaster.id),
+  leaveType: text("leaveType").notNull(), // 'paid_leave' | 'substitute_holiday' | 'special_leave' | 'holiday_request'
+  requestDate: text("requestDate").notNull(), // YYYY-MM-DD (JST)
+  reason: text("reason"),
+  status: text("status").default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
+  approvedBy: integer("approvedBy").references(() => employeeMaster.id),
+  approvedAt: text("approvedAt"),
+  note: text("note"), // 管理者コメント
+  createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
+  updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
+});
+
+export type LeaveRequest = typeof leaveRequests.$inferSelect;
+export type InsertLeaveRequest = typeof leaveRequests.$inferInsert;

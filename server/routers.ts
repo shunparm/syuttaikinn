@@ -5,6 +5,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { masterRouter } from "./routers/master";
 import { attendanceRouter } from "./routers/attendance";
 import { correctionRouter } from "./routers/correction";
+import { leaveRequestRouter } from "./routers/leaveRequest";
 import { exportRouter } from "./routers/export";
 import { usersRouter } from "./routers/users";
 import { pushNotificationRouter } from "./routers/pushNotification";
@@ -28,6 +29,9 @@ export const appRouter = router({
 
   // 訂正申請
   correction: correctionRouter,
+
+  // 休暇申請
+  leaveRequest: leaveRequestRouter,
 
   // CSV出力
   export: exportRouter,
