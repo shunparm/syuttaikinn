@@ -91,7 +91,8 @@ export async function initDb() {
       ALTER TABLE correction_requests ALTER COLUMN "newClockOutTime" DROP NOT NULL;
       ALTER TABLE correction_requests ALTER COLUMN "newSiteId" DROP NOT NULL;
       ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check;
-      ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other'));
+      ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'));
+      ALTER TABLE correction_requests ALTER COLUMN "attendanceRecordId" DROP NOT NULL;
       CREATE TABLE IF NOT EXISTS push_subscriptions (
         id SERIAL PRIMARY KEY,
         endpoint TEXT NOT NULL UNIQUE,

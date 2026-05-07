@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileText, Clock, MapPin, User, AlertCircle, HardHat, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { FileText, Clock, MapPin, User, AlertCircle, HardHat, ChevronRight, ChevronLeft, Check, PlusCircle } from "lucide-react";
 import { useLang } from "@/hooks/useLang";
 import { useIsMobile } from "@/hooks/useMobile";
 
@@ -23,6 +23,7 @@ const correctionTypeLabels = {
   cancel: "記録のキャンセル",
   site_change: "現場の変更",
   other: "その他",
+  new_record: "記録の追加（打刻忘れ）",
 };
 
 function formatTime(date: Date | string | null) {
@@ -43,13 +44,14 @@ function formatDate(date: Date | string | null) {
   });
 }
 
+type CorrectionType = "time_correction" | "cancel" | "site_change" | "other" | "new_record";
 type Step = "select-employee" | "correction-form";
 
 export default function Correction() {
   const [step, setStep] = useState<Step>("select-employee");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [selectedRecordId, setSelectedRecordId] = useState<string>("");
-  const [correctionType, setCorrectionType] = useState<"time_correction" | "cancel" | "site_change" | "other">("cancel");
+  const [correctionType, setCorrectionType] = useState<CorrectionType>("cancel");
   const [reason, setReason] = useState("");
   const [newClockInDate, setNewClockInDate] = useState("");
   const [newClockInTimeStr, setNewClockInTimeStr] = useState("");
@@ -102,7 +104,7 @@ export default function Correction() {
   const selectedRecord = records?.find((r) => r.id === Number(selectedRecordId));
   const selectedEmployee = employees?.find((e) => e.id === Number(selectedEmployeeId));
 
-  // time_correction 選択時 & レコード選択時に既存の日付を自動セット（日付忘れ防止）
+  // time_correction 選択時 & レコード選択時に既存の日付を自動セット
   useEffect(() => {
     if (correctionType !== "time_correction" || !selectedRecord) return;
     const toJSTDate = (isoStr: string) => {
@@ -117,8 +119,31 @@ export default function Correction() {
     }
   }, [selectedRecordId, correctionType]);
 
+  const isNewRecord = correctionType === "new_record";
+
   const handleSubmit = () => {
-    if (!selectedEmployeeId || !selectedRecordId || !reason) {
+    if (!selectedEmployeeId || !reason) {
+      toast.error(t("必須項目を入力してください", "Harap isi semua kolom wajib"));
+      return;
+    }
+
+    if (isNewRecord) {
+      if (!newClockInDate || !newClockInTimeStr || !newClockOutDate || !newClockOutTimeStr || !newSiteId) {
+        toast.error(t("出勤時刻・退勤時刻・現場を入力してください", "Masukkan waktu masuk, waktu pulang, dan lokasi"));
+        return;
+      }
+      createMutation.mutate({
+        employeeId: Number(selectedEmployeeId),
+        reason,
+        correctionType: "new_record",
+        newClockInTime: combineDT(newClockInDate, newClockInTimeStr),
+        newClockOutTime: combineDT(newClockOutDate, newClockOutTimeStr),
+        newSiteId: Number(newSiteId),
+      });
+      return;
+    }
+
+    if (!selectedRecordId) {
       toast.error(t("必須項目を入力してください", "Harap isi semua kolom wajib"));
       return;
     }
@@ -139,10 +164,10 @@ export default function Correction() {
         toast.error(t("退勤時刻の日付を入力してください", "Masukkan tanggal waktu pulang"));
         return;
       }
-    }
-    if (correctionType === "time_correction" && !hasClockIn && !hasClockOut) {
-      toast.error(t("修正する時刻を少なくとも1つ入力してください", "Masukkan setidaknya satu waktu yang ingin dikoreksi"));
-      return;
+      if (!hasClockIn && !hasClockOut) {
+        toast.error(t("修正する時刻を少なくとも1つ入力してください", "Masukkan setidaknya satu waktu yang ingin dikoreksi"));
+        return;
+      }
     }
     createMutation.mutate({
       attendanceRecordId: Number(selectedRecordId),
@@ -157,13 +182,10 @@ export default function Correction() {
 
   const hasClockIn  = !!(newClockInDate  && newClockInTimeStr);
   const hasClockOut = !!(newClockOutDate && newClockOutTimeStr);
-  const isFormValid =
-    selectedEmployeeId &&
-    selectedRecordId &&
-    reason &&
-    (correctionType !== "time_correction" || hasClockIn || hasClockOut);
+  const isFormValid = isNewRecord
+    ? !!(selectedEmployeeId && reason && newClockInDate && newClockInTimeStr && newClockOutDate && newClockOutTimeStr && newSiteId)
+    : !!(selectedEmployeeId && selectedRecordId && reason && (correctionType !== "time_correction" || hasClockIn || hasClockOut));
 
-  // ステップ定義
   const steps = [
     { key: "select-employee", label: t("作業員選択", "Pilih Pekerja") },
     { key: "correction-form", label: t("申請内容入力", "Isi Permohonan") },
@@ -179,7 +201,7 @@ export default function Correction() {
             {t("訂正申請", "Permohonan Koreksi")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {t("打刻の訂正・キャンセルを申請できます", "Anda dapat mengajukan koreksi atau pembatalan absensi")}
+            {t("打刻の訂正・キャンセル・記録の追加を申請できます", "Anda dapat mengajukan koreksi, pembatalan, atau penambahan catatan absensi")}
           </p>
         </div>
         {isMobile && (
@@ -227,7 +249,7 @@ export default function Correction() {
         </CardHeader>
         <CardContent className="space-y-5">
 
-          {/* ステップ1: 作業員選択（カードリスト） */}
+          {/* ステップ1: 作業員選択 */}
           {step === "select-employee" && (
             <>
               <div className="space-y-2">
@@ -283,49 +305,81 @@ export default function Correction() {
                 </div>
               </div>
 
-              {/* 対象記録選択 */}
+              {/* 訂正種別（最初に選択させる） */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  {t("記録を選択", "Pilih Catatan")}<span className="text-destructive">*</span>
+                <Label className="text-sm font-medium">
+                  {t("申請の種類", "Jenis permohonan")} <span className="text-destructive">*</span>
                 </Label>
                 <Select
-                  value={selectedRecordId}
-                  onValueChange={setSelectedRecordId}
+                  value={correctionType}
+                  onValueChange={(v) => {
+                    setCorrectionType(v as CorrectionType);
+                    setSelectedRecordId("");
+                    setNewClockInDate(""); setNewClockInTimeStr("");
+                    setNewClockOutDate(""); setNewClockOutTimeStr("");
+                    setNewSiteId("");
+                  }}
                 >
                   <SelectTrigger className="h-11">
-                    <SelectValue placeholder="訂正する記録を選択してください" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {records && records.length === 0 && (
-                      <div className="py-4 text-center text-sm text-muted-foreground">
-                        該当する記録がありません
-                      </div>
-                    )}
-                    {records?.map((r) => (
-                      <SelectItem key={r.id} value={String(r.id)}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {new Date(r.clockInTime).toLocaleDateString("ja-JP", {
-                              month: "numeric",
-                              day: "numeric",
-                              weekday: "short",
-                            })}
-                          </span>
-                          <span className="text-muted-foreground">|</span>
-                          <span>{r.siteName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatTime(r.clockInTime)}〜{r.clockOutTime ? formatTime(r.clockOutTime) : "稼働中"}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="time_correction">{t("出勤・退勤時刻の修正", "Koreksi waktu masuk/pulang")}</SelectItem>
+                    <SelectItem value="cancel">{t("記録のキャンセル", "Batalkan catatan")}</SelectItem>
+                    <SelectItem value="site_change">現場の変更</SelectItem>
+                    <SelectItem value="other">その他</SelectItem>
+                    <SelectItem value="new_record">
+                      <span className="flex items-center gap-1.5">
+                        <PlusCircle className="h-3.5 w-3.5 text-emerald-600" />
+                        {t("記録の追加（出勤・退勤ともに打刻忘れ）", "Tambah catatan (lupa absen masuk & pulang)")}
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* 対象記録選択（new_record 以外のみ表示） */}
+              {!isNewRecord && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    {t("訂正する記録を選択", "Pilih Catatan")}<span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={selectedRecordId} onValueChange={setSelectedRecordId}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="訂正する記録を選択してください" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {records && records.length === 0 && (
+                        <div className="py-4 text-center text-sm text-muted-foreground">
+                          該当する記録がありません
+                        </div>
+                      )}
+                      {records?.map((r) => (
+                        <SelectItem key={r.id} value={String(r.id)}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {new Date(r.clockInTime).toLocaleDateString("ja-JP", {
+                                month: "numeric",
+                                day: "numeric",
+                                weekday: "short",
+                              })}
+                            </span>
+                            <span className="text-muted-foreground">|</span>
+                            <span>{r.siteName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(r.clockInTime)}〜{r.clockOutTime ? formatTime(r.clockOutTime) : "稼働中"}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* 選択記録プレビュー */}
-              {selectedRecord && (
+              {!isNewRecord && selectedRecord && (
                 <div className="bg-muted/40 rounded-lg p-4 space-y-2 text-sm border border-border/50">
                   <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-2">
                     選択中の記録
@@ -353,33 +407,44 @@ export default function Correction() {
                 </div>
               )}
 
-              {/* 訂正種別 */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  {t("訂正の種類", "Jenis Koreksi")} <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={correctionType}
-                  onValueChange={(v) => {
-                    setCorrectionType(v as typeof correctionType);
-                    setNewClockInDate(""); setNewClockInTimeStr("");
-                    setNewClockOutDate(""); setNewClockOutTimeStr("");
-                    setNewSiteId("");
-                  }}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="time_correction">{t("出勤時刻の修正", "Koreksi waktu masuk")} / {t("退勤時刻の修正", "Koreksi waktu pulang")}</SelectItem>
-                    <SelectItem value="cancel">{t("記録のキャンセル", "Batalkan catatan")}</SelectItem>
-                    <SelectItem value="site_change">現場の変更</SelectItem>
-                    <SelectItem value="other">その他</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* 新規記録追加フォーム */}
+              {isNewRecord && (
+                <div className="space-y-4 bg-emerald-50/60 rounded-lg p-4 border border-emerald-200/60">
+                  <p className="text-xs text-emerald-700 font-medium flex items-center gap-1.5">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    出勤・退勤の時刻と現場を入力してください（すべて必須）
+                  </p>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t("現場", "Lokasi")} <span className="text-destructive">*</span></Label>
+                    <Select value={newSiteId} onValueChange={setNewSiteId}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="現場を選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sites?.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>{s.siteName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t("出勤日時", "Waktu masuk")} <span className="text-destructive">*</span></Label>
+                    <div className="flex gap-2">
+                      <Input type="date" value={newClockInDate} onChange={(e) => setNewClockInDate(e.target.value)} className="h-11 flex-1" />
+                      <Input type="time" value={newClockInTimeStr} onChange={(e) => setNewClockInTimeStr(e.target.value)} className="h-11 w-28" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t("退勤日時", "Waktu pulang")} <span className="text-destructive">*</span></Label>
+                    <div className="flex gap-2">
+                      <Input type="date" value={newClockOutDate} onChange={(e) => setNewClockOutDate(e.target.value)} className="h-11 flex-1" />
+                      <Input type="time" value={newClockOutTimeStr} onChange={(e) => setNewClockOutTimeStr(e.target.value)} className="h-11 w-28" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
-              {/* 時刻入力（「時刻の修正」選択時のみ表示） */}
+              {/* 時刻修正フォーム（time_correction のみ） */}
               {correctionType === "time_correction" && (
                 <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border/50">
                   <p className="text-xs text-muted-foreground">修正する時刻を入力してください（片方のみでも可）</p>
@@ -400,7 +465,7 @@ export default function Correction() {
                 </div>
               )}
 
-              {/* 現場変更（site_change選択時のみ） */}
+              {/* 現場変更（site_change のみ） */}
               {correctionType === "site_change" && (
                 <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border/50">
                   <p className="text-xs text-muted-foreground">変更先の現場を選択してください</p>
@@ -415,9 +480,7 @@ export default function Correction() {
                       </SelectTrigger>
                       <SelectContent>
                         {sites?.map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>
-                            {s.siteName}
-                          </SelectItem>
+                          <SelectItem key={s.id} value={String(s.id)}>{s.siteName}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -425,13 +488,15 @@ export default function Correction() {
                 </div>
               )}
 
-              {/* 訂正理由 */}
+              {/* 申請理由 */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
                   {t("申請理由", "Alasan permohonan")} <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
-                  placeholder="訂正が必要な理由を入力してください..."
+                  placeholder={isNewRecord
+                    ? t("打刻し忘れた理由を入力してください...", "Masukkan alasan lupa absen...")
+                    : "訂正が必要な理由を入力してください..."}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
@@ -462,7 +527,7 @@ export default function Correction() {
         </CardContent>
       </Card>
 
-      {/* 審査待ち一覧（送信後に下部表示・承認/却下後は自動で消える） */}
+      {/* 審査待ち一覧 */}
       {myRequests && myRequests.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
@@ -491,18 +556,27 @@ export default function Correction() {
                           審査中
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {correctionTypeLabels[req.correctionType as keyof typeof correctionTypeLabels]}
+                          {correctionTypeLabels[req.correctionType as keyof typeof correctionTypeLabels] ?? req.correctionType}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          {req.siteName}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          {formatTime(req.clockInTime)} 〜 {req.clockOutTime ? formatTime(req.clockOutTime) : "稼働中"}
-                        </span>
+                        {req.siteName && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            {req.siteName}
+                          </span>
+                        )}
+                        {req.clockInTime ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 shrink-0" />
+                            {formatTime(req.clockInTime)} 〜 {req.clockOutTime ? formatTime(req.clockOutTime) : "稼働中"}
+                          </span>
+                        ) : req.newClockInTime ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 shrink-0" />
+                            新規: {formatTime(req.newClockInTime)} 〜 {req.newClockOutTime ? formatTime(req.newClockOutTime) : "―"}
+                          </span>
+                        ) : null}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         理由：{req.reason}
