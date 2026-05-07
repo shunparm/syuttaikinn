@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Building2, Plus, Pencil, Shield, MapPin, Trash2 } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, Plus, Pencil, Shield, MapPin, Trash2 } from "lucide-react";
+
+const PAGE_SIZE = 10;
 import { useLocation } from "wouter";
 
 type Site = {
@@ -33,6 +35,7 @@ export default function AdminSites() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Site | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState<{
     siteId: string;
     siteName: string;
@@ -183,7 +186,7 @@ export default function AdminSites() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sites.map((site) => (
+                  {sites.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((site) => (
                     <tr key={site.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                       <td className="py-3 px-4 font-mono text-xs text-muted-foreground">{site.siteId}</td>
                       <td className="py-3 px-4 font-semibold">{site.siteName}</td>
@@ -238,6 +241,24 @@ export default function AdminSites() {
                   ))}
                 </tbody>
               </table>
+              {Math.ceil(sites.length / PAGE_SIZE) > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+                  <span className="text-xs text-muted-foreground">
+                    {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sites.length)} / {sites.length}件
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                      onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs px-2 tabular-nums">{page} / {Math.ceil(sites.length / PAGE_SIZE)}</span>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                      onClick={() => setPage(p => Math.min(Math.ceil(sites.length / PAGE_SIZE), p + 1))} disabled={page === Math.ceil(sites.length / PAGE_SIZE)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

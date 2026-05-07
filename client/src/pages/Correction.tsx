@@ -59,6 +59,8 @@ export default function Correction() {
   const [newClockOutTimeStr, setNewClockOutTimeStr] = useState("");
   const [newSiteId, setNewSiteId] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [pendingPage, setPendingPage] = useState(1);
+  const PENDING_PAGE_SIZE = 10;
 
   useEffect(() => {
     if (sessionStorage.getItem("correctionSuccess")) {
@@ -327,13 +329,13 @@ export default function Correction() {
                     <SelectItem value="time_correction">{t("出勤・退勤時刻の修正", "Koreksi waktu masuk/pulang")}</SelectItem>
                     <SelectItem value="cancel">{t("記録のキャンセル", "Batalkan catatan")}</SelectItem>
                     <SelectItem value="site_change">現場の変更</SelectItem>
-                    <SelectItem value="other">その他</SelectItem>
                     <SelectItem value="new_record">
                       <span className="flex items-center gap-1.5">
                         <PlusCircle className="h-3.5 w-3.5 text-emerald-600" />
                         {t("記録の追加（出勤・退勤ともに打刻忘れ）", "Tambah catatan (lupa absen masuk & pulang)")}
                       </span>
                     </SelectItem>
+                    <SelectItem value="other">その他</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -546,7 +548,7 @@ export default function Correction() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border/50">
-              {myRequests.map((req) => (
+              {myRequests.slice((pendingPage - 1) * PENDING_PAGE_SIZE, pendingPage * PENDING_PAGE_SIZE).map((req) => (
                 <div key={req.id} className="px-6 py-4 hover:bg-muted/20 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5 flex-1 min-w-0">
@@ -592,6 +594,24 @@ export default function Correction() {
                 </div>
               ))}
             </div>
+            {Math.ceil(myRequests.length / PENDING_PAGE_SIZE) > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+                <span className="text-xs text-muted-foreground">
+                  {(pendingPage - 1) * PENDING_PAGE_SIZE + 1}–{Math.min(pendingPage * PENDING_PAGE_SIZE, myRequests.length)} / {myRequests.length}件
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                    onClick={() => setPendingPage(p => Math.max(1, p - 1))} disabled={pendingPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs px-2 tabular-nums">{pendingPage} / {Math.ceil(myRequests.length / PENDING_PAGE_SIZE)}</span>
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                    onClick={() => setPendingPage(p => Math.min(Math.ceil(myRequests.length / PENDING_PAGE_SIZE), p + 1))} disabled={pendingPage === Math.ceil(myRequests.length / PENDING_PAGE_SIZE)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
