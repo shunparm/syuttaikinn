@@ -83,7 +83,7 @@ export default function LeaveRequest() {
   const selectedEmployee = employees?.find((e) => e.id === Number(selectedEmployeeId));
 
   const handleSubmit = () => {
-    if (!selectedEmployeeId || !requestDate) {
+    if (!selectedEmployeeId || !requestDate || !reason.trim()) {
       toast.error(t("必須項目を入力してください", "Harap isi semua kolom wajib"));
       return;
     }
@@ -91,11 +91,11 @@ export default function LeaveRequest() {
       employeeId: Number(selectedEmployeeId),
       leaveType,
       requestDate,
-      reason: reason || undefined,
+      reason: reason.trim(),
     });
   };
 
-  const isFormValid = !!selectedEmployeeId && !!requestDate;
+  const isFormValid = !!selectedEmployeeId && !!requestDate && !!reason.trim();
 
   const steps = [
     { key: "select-employee", label: t("作業員選択", "Pilih Pekerja") },
@@ -293,18 +293,16 @@ export default function LeaveRequest() {
                 />
               </div>
 
-              {/* 理由（任意） */}
+              {/* 理由（必須） */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
                   {t("理由・備考", "Alasan / keterangan")}{" "}
-                  <span className="text-xs text-muted-foreground">
-                    {t("（任意）", "(opsional)")}
-                  </span>
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   placeholder={t(
-                    "理由や備考があれば入力してください...",
-                    "Masukkan alasan atau keterangan jika ada..."
+                    "理由を入力してください...",
+                    "Masukkan alasan..."
                   )}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
