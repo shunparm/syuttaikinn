@@ -26,7 +26,7 @@ export const leaveRequestRouter = router({
         employeeId: z.number(),
         leaveType: z.enum(["paid_leave", "substitute_holiday", "special_leave", "holiday_request"]),
         requestDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD形式で入力してください"),
-        reason: z.string().optional(),
+        reason: z.string().min(1, "理由を入力してください"),
       })
     )
     .mutation(async ({ input }) => {
@@ -51,7 +51,7 @@ export const leaveRequestRouter = router({
         employeeId: input.employeeId,
         leaveType: input.leaveType,
         requestDate: input.requestDate,
-        reason: input.reason ?? null,
+        reason: input.reason,
         status: "pending",
       });
       const rows = await db
