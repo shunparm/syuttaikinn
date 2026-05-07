@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { router, publicProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
+import { attendanceRecords, employeeMaster, siteMaster, leaveRequests } from "../../drizzle/schema";
 
 const iso = (d: Date) => d.toISOString();
 
@@ -33,6 +33,19 @@ const minToHHMM = (m: number | null | undefined): string => {
   return `${Math.floor(m/60)}:${String(m%60).padStart(2,"0")}`;
 };
 
+// "YYYY-MM-DD"（JST基準）― leave_requests の requestDate と比較用
+function toJSTDateStr(d: Date): string {
+  const jst = new Date(d.getTime() + JST_OFFSET);
+  return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth()+1).padStart(2,"0")}-${String(jst.getUTCDate()).padStart(2,"0")}`;
+}
+
+const LEAVE_TYPE_LABEL: Record<string, string> = {
+  paid_leave: "有給休暇",
+  substitute_holiday: "代休",
+  special_leave: "特別休暇",
+  holiday_request: "休日希望",
+};
+
 // ─── 実働時間計算（JST 12:00〜13:00 の重複分を差し引く）─────────
 function jstBreakRange(clockIn: Date): { breakStart: Date; breakEnd: Date } {
   const jst = new Date(clockIn.getTime() + JST_OFFSET);
@@ -60,23 +73,46 @@ export const exportRouter = router({
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
-      // JST変換済み Date を直接使用（クライアントが +09:00 付きで渡す）
       const start = input.startDate;
       const end   = input.endDate;
-      const conditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
-      if (input.employeeId) conditions.push(eq(attendanceRecords.employeeId, input.employeeId));
-      const rows = await db.select({
-        id: attendanceRecords.id, clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
-        workReport: attendanceRecords.workReport,
-        companionEmployeeIds: attendanceRecords.companionEmployeeIds,
-        employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
-        siteName: siteMaster.siteName, siteCode: siteMaster.siteId, location: siteMaster.location,
-      }).from(attendanceRecords)
-        .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
-        .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
-        .where(and(...conditions)).orderBy(attendanceRecords.clockInTime);
+      const startDateStr = toJSTDateStr(start);
+      const endDateStr   = toJSTDateStr(end);
 
-      // workingMinutes をDB保存値ではなく clockIn/clockOut から都度再計算
+      const atConditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
+      if (input.employeeId) atConditions.push(eq(attendanceRecords.employeeId, input.employeeId));
+
+      const leaveConditions: any[] = [
+        eq(leaveRequests.status, "approved"),
+        gte(leaveRequests.requestDate, startDateStr),
+        lte(leaveRequests.requestDate, endDateStr),
+      ];
+      if (input.employeeId) leaveConditions.push(eq(leaveRequests.employeeId, input.employeeId));
+
+      const [rows, leaveRows] = await Promise.all([
+        db.select({
+          id: attendanceRecords.id, clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
+          workReport: attendanceRecords.workReport,
+          companionEmployeeIds: attendanceRecords.companionEmployeeIds,
+          employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
+          siteName: siteMaster.siteName, siteCode: siteMaster.siteId, location: siteMaster.location,
+        }).from(attendanceRecords)
+          .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
+          .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
+          .where(and(...atConditions)).orderBy(attendanceRecords.clockInTime),
+        db.select({
+          id: leaveRequests.id,
+          employeeId: leaveRequests.employeeId,
+          leaveType: leaveRequests.leaveType,
+          requestDate: leaveRequests.requestDate,
+          reason: leaveRequests.reason,
+          employeeName: employeeMaster.name,
+          employeeCode: employeeMaster.employeeId,
+        }).from(leaveRequests)
+          .innerJoin(employeeMaster, eq(leaveRequests.employeeId, employeeMaster.id))
+          .where(and(...leaveConditions))
+          .orderBy(leaveRequests.requestDate),
+      ]);
+
       const rowsWithMinutes = rows.map(r => ({
         ...r,
         workingMinutes: computeWorkingMinutes(r.clockInTime, r.clockOutTime),
@@ -85,36 +121,59 @@ export const exportRouter = router({
       const summaryMap = new Map<string, {
         employeeName: string; employeeCode: string;
         totalWorkingMinutes: number; totalAttendanceDays: Set<string>;
+        totalLeaveDays: number;
         records: typeof rowsWithMinutes;
       }>();
+
+      const ensureSummary = (code: string, name: string) => {
+        if (!summaryMap.has(code))
+          summaryMap.set(code, { employeeName: name, employeeCode: code, totalWorkingMinutes: 0, totalAttendanceDays: new Set(), totalLeaveDays: 0, records: [] });
+        return summaryMap.get(code)!;
+      };
+
       for (const row of rowsWithMinutes) {
-        if (!summaryMap.has(row.employeeCode))
-          summaryMap.set(row.employeeCode, { employeeName: row.employeeName, employeeCode: row.employeeCode, totalWorkingMinutes: 0, totalAttendanceDays: new Set(), records: [] });
-        const e = summaryMap.get(row.employeeCode)!;
+        const e = ensureSummary(row.employeeCode, row.employeeName);
         e.totalWorkingMinutes += row.workingMinutes ?? 0;
-        e.totalAttendanceDays.add(fmtDate(row.clockInTime)); // JST基準の日付でグループ化
+        e.totalAttendanceDays.add(fmtDate(row.clockInTime));
         e.records.push(row);
       }
+      for (const lr of leaveRows) {
+        const e = ensureSummary(lr.employeeCode, lr.employeeName);
+        e.totalLeaveDays += 1;
+      }
+
       const summaries = Array.from(summaryMap.values()).map(s => ({
         employeeName: s.employeeName, employeeCode: s.employeeCode,
         totalWorkingMinutes: s.totalWorkingMinutes,
         totalWorkingHours: minToHHMM(s.totalWorkingMinutes),
         totalAttendanceDays: s.totalAttendanceDays.size,
+        totalLeaveDays: s.totalLeaveDays,
         records: s.records,
       })).sort((a, b) => a.employeeCode.localeCompare(b.employeeCode, undefined, { numeric: true }));
-      return { rows: rowsWithMinutes, summaries };
+
+      return { rows: rowsWithMinutes, summaries, leaveRows };
     }),
 
   generateCsvString: publicProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
-      // JST変換済み Date を直接使用（クライアントが +09:00 付きで渡す）
       const start = input.startDate;
       const end   = input.endDate;
-      const conditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
-      if (input.employeeId) conditions.push(eq(attendanceRecords.employeeId, input.employeeId));
-      const [rows, allEmpRows] = await Promise.all([
+      const startDateStr = toJSTDateStr(start);
+      const endDateStr   = toJSTDateStr(end);
+
+      const atConditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
+      if (input.employeeId) atConditions.push(eq(attendanceRecords.employeeId, input.employeeId));
+
+      const leaveConditions: any[] = [
+        eq(leaveRequests.status, "approved"),
+        gte(leaveRequests.requestDate, startDateStr),
+        lte(leaveRequests.requestDate, endDateStr),
+      ];
+      if (input.employeeId) leaveConditions.push(eq(leaveRequests.employeeId, input.employeeId));
+
+      const [rows, leaveRows, allEmpRows] = await Promise.all([
         db.select({
           clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
           workReport: attendanceRecords.workReport, companionEmployeeIds: attendanceRecords.companionEmployeeIds,
@@ -123,32 +182,62 @@ export const exportRouter = router({
         }).from(attendanceRecords)
           .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
           .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
-          .where(and(...conditions)).orderBy(attendanceRecords.clockInTime),
+          .where(and(...atConditions)).orderBy(attendanceRecords.clockInTime),
+        db.select({
+          leaveType: leaveRequests.leaveType,
+          requestDate: leaveRequests.requestDate,
+          reason: leaveRequests.reason,
+          employeeName: employeeMaster.name,
+          employeeCode: employeeMaster.employeeId,
+        }).from(leaveRequests)
+          .innerJoin(employeeMaster, eq(leaveRequests.employeeId, employeeMaster.id))
+          .where(and(...leaveConditions)),
         db.select({ id: employeeMaster.id, name: employeeMaster.name }).from(employeeMaster),
       ]);
+
       const empMap = new Map(allEmpRows.map(e => [e.id, e.name]));
       const resolveCompanions = (json: string | null | undefined) => {
         if (!json) return "";
         try { return (JSON.parse(json) as number[]).map(id => empMap.get(id) ?? `ID:${id}`).join("、"); }
         catch { return ""; }
       };
-      const header = ["日付","作業員コード","作業員名","現場名","所在地","出勤時刻","退勤時刻","実働時間","同行作業員","作業日報"];
-      const csvRows = rows.map(r => {
+
+      const header = ["日付","作業員コード","作業員名","現場名","所在地","出勤時刻","退勤時刻","実働時間","同行作業員","作業日報","種別"];
+
+      type SortableRow = { sortKey: string; cells: string[] };
+
+      const atRows: SortableRow[] = rows.map(r => {
         const wm = computeWorkingMinutes(r.clockInTime, r.clockOutTime);
-        return [
-          fmtDate(r.clockInTime),
-          r.employeeCode,
-          r.employeeName,
-          r.siteName,
-          r.location ?? "",
-          fmtDateTime(r.clockInTime),
-          fmtDateTime(r.clockOutTime) || "-",
-          minToHHMM(wm),
-          resolveCompanions(r.companionEmployeeIds),
-          (r.workReport ?? "").replace(/,/g,"、").replace(/\n/g," "),
-        ];
+        return {
+          sortKey: `${toJSTDateStr(new Date(r.clockInTime))}_${r.employeeCode}`,
+          cells: [
+            fmtDate(r.clockInTime), r.employeeCode, r.employeeName,
+            r.siteName, r.location ?? "",
+            fmtDateTime(r.clockInTime), fmtDateTime(r.clockOutTime) || "-",
+            minToHHMM(wm),
+            resolveCompanions(r.companionEmployeeIds),
+            (r.workReport ?? "").replace(/,/g,"、").replace(/\n/g," "),
+            "",
+          ],
+        };
       });
-      const csvContent = [header, ...csvRows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
-      return { csv: "\uFEFF" + csvContent };
+
+      const lvRows: SortableRow[] = leaveRows.map(lr => {
+        const [y, m, d] = lr.requestDate.split("-");
+        const label = LEAVE_TYPE_LABEL[lr.leaveType] ?? lr.leaveType;
+        return {
+          sortKey: `${lr.requestDate}_${lr.employeeCode}`,
+          cells: [
+            `${y}/${m}/${d}`, lr.employeeCode, lr.employeeName,
+            "", "", "", "", "", "",
+            (lr.reason ?? "").replace(/,/g,"、").replace(/\n/g," "),
+            label,
+          ],
+        };
+      });
+
+      const allRows = [...atRows, ...lvRows].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      const csvContent = [header, ...allRows.map(r => r.cells)].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+      return { csv: "﻿" + csvContent };
     }),
 });

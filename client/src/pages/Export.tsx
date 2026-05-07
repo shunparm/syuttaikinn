@@ -14,6 +14,13 @@ import {
 import { toast } from "sonner";
 import { Download, FileSpreadsheet, Users, Clock, Calendar } from "lucide-react";
 
+const LEAVE_TYPE_LABEL: Record<string, string> = {
+  paid_leave: "有給休暇",
+  substitute_holiday: "代休",
+  special_leave: "特別休暇",
+  holiday_request: "休日希望",
+};
+
 function minutesToHHMM(min: number) {
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -79,6 +86,8 @@ export default function Export() {
     URL.revokeObjectURL(url);
     toast.success("CSVをダウンロードしました");
   };
+
+  const hasData = (exportData?.rows.length ?? 0) > 0 || (exportData?.leaveRows.length ?? 0) > 0;
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -152,7 +161,7 @@ export default function Export() {
               onClick={handleDownload}
               size="sm"
               className="gap-2"
-              disabled={csvLoading || !exportData?.rows.length}
+              disabled={csvLoading || !hasData}
             >
               <Download className="h-4 w-4" />
               CSVダウンロード
@@ -178,6 +187,7 @@ export default function Export() {
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">作業員コード</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">氏名</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">出勤日数</th>
+                    <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">休暇日数</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">合計実働時間</th>
                   </tr>
                 </thead>
@@ -191,6 +201,15 @@ export default function Export() {
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                           {s.totalAttendanceDays}日
                         </span>
+                      </td>
+                      <td className="py-3 px-4 text-right tabular-nums">
+                        {s.totalLeaveDays > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-green-600 font-medium">
+                            {s.totalLeaveDays}日
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right tabular-nums font-semibold">
                         <span className="flex items-center justify-end gap-1 text-primary">
@@ -209,6 +228,9 @@ export default function Export() {
                     <td className="py-3 px-4 text-right text-xs font-semibold tabular-nums">
                       {exportData.summaries.reduce((s, r) => s + r.totalAttendanceDays, 0)}日
                     </td>
+                    <td className="py-3 px-4 text-right text-xs font-semibold tabular-nums text-green-600">
+                      {exportData.summaries.reduce((s, r) => s + r.totalLeaveDays, 0)}日
+                    </td>
                     <td className="py-3 px-4 text-right text-xs font-semibold tabular-nums text-primary">
                       {minutesToHHMM(exportData.summaries.reduce((s, r) => s + (r.totalWorkingMinutes ?? 0), 0))}
                     </td>
@@ -221,11 +243,12 @@ export default function Export() {
       )}
 
       {/* 明細データ */}
-      {exportData && exportData.rows.length > 0 && (
+      {exportData && hasData && (
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
-              明細データ ({exportData.rows.length}件)
+              明細データ ({exportData.rows.length}件
+              {exportData.leaveRows.length > 0 && `・休暇${exportData.leaveRows.length}件`})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -235,7 +258,7 @@ export default function Export() {
                   <tr className="border-b border-border bg-muted/30">
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-muted-foreground">日付</th>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-muted-foreground">作業員</th>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-muted-foreground">現場</th>
+                    <th className="text-left py-2.5 px-4 text-xs font-medium text-muted-foreground">現場 / 種別</th>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-muted-foreground">出勤</th>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-muted-foreground">退勤</th>
                     <th className="text-right py-2.5 px-4 text-xs font-medium text-muted-foreground">実働</th>
@@ -243,8 +266,9 @@ export default function Export() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* 出退勤行 */}
                   {exportData.rows.map((row) => (
-                    <tr key={row.id} className="border-b border-border/50 hover:bg-muted/20">
+                    <tr key={`at-${row.id}`} className="border-b border-border/50 hover:bg-muted/20">
                       <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap tabular-nums">
                         {new Date(row.clockInTime).toLocaleDateString("ja-JP", {
                           month: "2-digit",
@@ -275,6 +299,26 @@ export default function Export() {
                       </td>
                     </tr>
                   ))}
+                  {/* 承認済み休暇行 */}
+                  {exportData.leaveRows.map((lr) => (
+                    <tr key={`lv-${lr.id}`} className="border-b border-border/50 bg-green-50/60 hover:bg-green-50">
+                      <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap tabular-nums">
+                        {lr.requestDate.slice(5).replace("-", "/")}
+                      </td>
+                      <td className="py-2.5 px-4 font-medium whitespace-nowrap">{lr.employeeName}</td>
+                      <td className="py-2.5 px-4 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                          {LEAVE_TYPE_LABEL[lr.leaveType] ?? lr.leaveType}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-muted-foreground">-</td>
+                      <td className="py-2.5 px-4 text-muted-foreground">-</td>
+                      <td className="py-2.5 px-4 text-right text-muted-foreground">-</td>
+                      <td className="py-2.5 px-4 text-muted-foreground max-w-40 truncate">
+                        {lr.reason ?? "-"}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -282,7 +326,7 @@ export default function Export() {
         </Card>
       )}
 
-      {exportData && exportData.rows.length === 0 && (
+      {exportData && !hasData && (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-12 text-center">
             <FileSpreadsheet className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
