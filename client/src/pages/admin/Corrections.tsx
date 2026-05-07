@@ -22,11 +22,12 @@ const correctionTypeLabels: Record<string, string> = {
   cancel: "記録のキャンセル",
   site_change: "現場の変更",
   other: "その他",
+  new_record: "記録の追加",
 };
 
 type CorrectionRequest = {
   id: number;
-  attendanceRecordId: number;
+  attendanceRecordId: number | null;
   employeeId: number;
   employeeName: string;
   reason: string;
@@ -37,8 +38,8 @@ type CorrectionRequest = {
   approvedBy?: number | null;
   approvedAt?: string | null;
   createdAt: string;
-  clockInTime: string;
-  siteName: string;
+  clockInTime: string | null;
+  siteName: string | null;
 };
 
 export default function AdminCorrections() {
@@ -181,19 +182,26 @@ export default function AdminCorrections() {
                         <span className="font-medium text-foreground">種別:</span>{" "}
                         {correctionTypeLabels[req.correctionType] ?? req.correctionType}
                       </p>
-                      <p>
-                        <span className="font-medium text-foreground">対象記録:</span>{" "}
-                        {new Date(req.clockInTime).toLocaleDateString("ja-JP")} / {req.siteName}
-                      </p>
+                      {req.clockInTime ? (
+                        <p>
+                          <span className="font-medium text-foreground">対象記録:</span>{" "}
+                          {new Date(req.clockInTime).toLocaleDateString("ja-JP")} / {req.siteName}
+                        </p>
+                      ) : (
+                        <p>
+                          <span className="font-medium text-foreground">種別:</span>{" "}
+                          新規記録の追加申請
+                        </p>
+                      )}
                       {req.newClockInTime && (
                         <p>
-                          <span className="font-medium text-foreground">新しい出勤時刻:</span>{" "}
+                          <span className="font-medium text-foreground">{req.correctionType === "new_record" ? "出勤時刻:" : "新しい出勤時刻:"}</span>{" "}
                           {new Date(req.newClockInTime).toLocaleString("ja-JP")}
                         </p>
                       )}
                       {req.newClockOutTime && (
                         <p>
-                          <span className="font-medium text-foreground">新しい退勤時刻:</span>{" "}
+                          <span className="font-medium text-foreground">{req.correctionType === "new_record" ? "退勤時刻:" : "新しい退勤時刻:"}</span>{" "}
                           {new Date(req.newClockOutTime).toLocaleString("ja-JP")}
                         </p>
                       )}

@@ -71,10 +71,10 @@ export type InsertAttendanceRecord = typeof attendanceRecords.$inferInsert;
 // ─── 訂正申請 ────────────────────────────────────────────────────────────────
 export const correctionRequests = pgTable("correction_requests", {
   id: serial("id").primaryKey(),
-  attendanceRecordId: integer("attendanceRecordId").notNull().references(() => attendanceRecords.id),
+  attendanceRecordId: integer("attendanceRecordId").references(() => attendanceRecords.id),
   employeeId: integer("employeeId").notNull().references(() => employeeMaster.id),
   reason: text("reason").notNull(),
-  correctionType: text("correctionType").notNull(), // 'time_correction' | 'cancel' | 'site_change' | 'other'
+  correctionType: text("correctionType").notNull(), // 'time_correction' | 'cancel' | 'site_change' | 'other' | 'new_record'
   newClockInTime: text("newClockInTime"),
   newClockOutTime: text("newClockOutTime"),
   newSiteId: integer("newSiteId").references(() => siteMaster.id),
