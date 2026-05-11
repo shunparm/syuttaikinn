@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """技能実習日誌 新月シート追加スクリプト
 
-既存のExcelファイルから最新シートをテンプレートとしてコピーし、
+既存の日誌シートをテンプレートとしてコピーし、
 番号割り当て・業務名・指導内容を自動入力して新月シートを追加する。
 
+実習生4人で同内容のため、月1枚シートを作成し氏名を変えて4回印刷する運用。
+
 使い方:
-    python add_month.py <Excelファイル> <年> <月> <氏名> [出勤日] [--second] [--seed N]
+    python add_month.py <Excelファイル> <年> <月> <氏名> [出勤日] [--seed N]
 
 例:
     python add_month.py 技能実習日誌.xlsx 2026 5 ヨザ 1,2,5,6,7,8,9,12,13,14,15,16,19,20,21,22,23
-    python add_month.py 技能実習日誌.xlsx 2026 5 リズキ --second   # 2人目シート
     python add_month.py 技能実習日誌.xlsx 2026 5 ヨザ --seed 42 1,2,5,6,7
+
+氏名だけ変更して再印刷する場合:
+    python add_month.py 技能実習日誌.xlsx 2026 5 リズキ --rename-only
 """
 
 import calendar
@@ -22,6 +26,9 @@ import sys
 import openpyxl
 
 SUPERVISOR = "中原"
+
+# ★・■で始まるシートはテンプレート対象外
+EXCLUDED_SHEETS = {"★日誌自動生成", "■入力マスタ"}
 
 MONTHLY_REQUIRED = {
     1:  {1: 91, 2: 10, 3: 44, 4: 8, 5: 15, 6: 8},
@@ -71,47 +78,6 @@ NUM_TO_WORKS = {
     ],
 }
 
-# 実習実施予定表の参照リスト（I・J列固定）
-REF_LIST = [
-    ("1-(1)", "走行操作作業"),
-    ("①",    "発進操作"),
-    ("②",    "平坦地走行操作"),
-    ("③",    "登坂操作"),
-    ("④",    "降坂操作"),
-    ("⑤",    "停止操作"),
-    ("⑥",    "下車操作"),
-    ("1-(2)", "掘削作業"),
-    ("①",    "溝掘削作業"),
-    ("②",    "建築物の基礎掘削作業"),
-    ("③",    "地表面の浅い掘削作業"),
-    ("④",    "法面の切取り仕上げ作業"),
-    ("⑤",    "土砂積込み作業"),
-    ("⑥",    "固結した土砂の破砕及び積込み作業"),
-    ("⑦",    "岩石の移動、除去作業"),
-    ("⑧",    "粉砕した砕石の積込み作業"),
-    ("1-(3)", "建設機械点検作業"),
-    ("①",    "毎日整備"),
-    ("②",    "始業前点検"),
-    ("③",    "作業終了後の機体の清掃及び燃料補給"),
-    ("2-(4)", "安全衛生業務"),
-    ("①",    "雇入れ時等の安全衛生教育"),
-    ("②",    "作業開始前の安全装置等の点検作業"),
-    ("③",    "建設機械施工職種に必要な整理整頓作業"),
-    ("④",    "建設機械施工職種の作業用機械及び周囲の安全確認作業"),
-    ("⑤",    "保護具の着用と服装の安全点検作業"),
-    ("⑥",    "安全装置の使用等による作業"),
-    ("⑦",    "労働安全衛生上の有害性を防止するための作業"),
-    ("⑧",    "異常時の応急措置を習得するための作業"),
-    ("3①",   "押土整地作業"),
-    ("②",    "積込み作業"),
-    ("③",    "締固め作業"),
-    ("④",    "建設機械施工管理作業"),
-    ("⑤",    "土工作業(対象職種・作業に係る手作業の作業）"),
-    ("⑥",    "建設機械の管理及び点検・整備作業"),
-    ("⑦",    "各種揚重運搬機械の運転作業"),
-    ("⑧",    "玉掛け作業(特別教育又は技能講習が必要）"),
-]
-
 
 def allocate_days(n_days: int, month: int) -> dict:
     reqs = MONTHLY_REQUIRED[month]
@@ -147,24 +113,21 @@ def shuffle_no_triple(lst: list, rng: random.Random) -> list:
     return lst
 
 
-def is_second_trainee(sheet_name: str) -> bool:
-    return "(2)" in sheet_name
-
-
-def find_template(wb, want_second: bool) -> openpyxl.worksheet.worksheet.Worksheet:
-    """テンプレートとなる既存シートを返す（最新の同種シートを使用）。"""
+def find_template(wb) -> openpyxl.worksheet.worksheet.Worksheet:
+    """テンプレートとなる既存の日誌シートを返す（最新月シートを優先）。"""
     candidates = [
         ws for ws in wb.worksheets
-        if is_second_trainee(ws.title) == want_second
+        if ws.title not in EXCLUDED_SHEETS
+        and not ws.title.startswith("★")
+        and not ws.title.startswith("■")
     ]
     if not candidates:
-        candidates = wb.worksheets
+        raise ValueError("テンプレートになる日誌シートが見つかりません。")
     return candidates[0]
 
 
-def make_sheet_name(year: int, month: int, is_second: bool) -> str:
-    base = f"{year}.{month}"
-    return f"{base} (2)" if is_second else base
+def make_sheet_name(year: int, month: int) -> str:
+    return f"{year}.{month}"
 
 
 def update_header(ws, year: int, month: int, trainee_name: str):
@@ -188,7 +151,6 @@ def reset_data_rows(ws, year: int, month: int, working_days: list, rng: random.R
     for day in range(1, 32):
         row = 8 + day
         if day > days_in_month:
-            # 月末以降の行を空欄に（31日未満の月）
             ws.cell(row=row, column=1).value = None
             ws.cell(row=row, column=2).value = None
             ws.cell(row=row, column=4).value = None
@@ -242,7 +204,7 @@ def print_summary(month: int, working_days: list, alloc: dict):
 def parse_args():
     args = list(sys.argv[1:])
     seed = None
-    is_second = False
+    rename_only = False
 
     if "--seed" in args:
         idx = args.index("--seed")
@@ -250,14 +212,14 @@ def parse_args():
         args.pop(idx + 1)
         args.pop(idx)
 
-    if "--second" in args:
-        is_second = True
-        args.remove("--second")
+    if "--rename-only" in args:
+        rename_only = True
+        args.remove("--rename-only")
 
     if len(args) < 4:
-        print("使い方: python add_month.py <Excelファイル> <年> <月> <氏名> [出勤日] [--second] [--seed N]")
+        print("使い方: python add_month.py <Excelファイル> <年> <月> <氏名> [出勤日] [--seed N]")
+        print("        python add_month.py <Excelファイル> <年> <月> <氏名> --rename-only  # 氏名だけ変更")
         print("例:     python add_month.py 技能実習日誌.xlsx 2026 5 ヨザ 1,2,5,6,7,8,9,12,13")
-        print("        python add_month.py 技能実習日誌.xlsx 2026 5 リズキ --second  # 2人目シート")
         sys.exit(1)
 
     excel_path = args[0]
@@ -266,12 +228,26 @@ def parse_args():
     trainee_name = args[3]
     working_days_str = args[4] if len(args) >= 5 else None
 
-    return excel_path, year, month, trainee_name, working_days_str, seed, is_second
+    return excel_path, year, month, trainee_name, working_days_str, seed, rename_only
 
 
 def main():
-    excel_path, year, month, trainee_name, working_days_str, seed, is_second = parse_args()
+    excel_path, year, month, trainee_name, working_days_str, seed, rename_only = parse_args()
     rng = random.Random(seed)
+
+    wb = openpyxl.load_workbook(excel_path)
+    sheet_name = make_sheet_name(year, month)
+
+    # --rename-only: 既存シートの氏名だけ変更して終了
+    if rename_only:
+        if sheet_name not in wb.sheetnames:
+            print(f"エラー: シート「{sheet_name}」が見つかりません。先にシートを作成してください。")
+            sys.exit(1)
+        ws = wb[sheet_name]
+        update_header(ws, year, month, trainee_name)
+        wb.save(excel_path)
+        print(f"氏名を「{trainee_name}」に変更しました → {excel_path}")
+        return
 
     # 出勤日の取得
     if working_days_str:
@@ -282,33 +258,26 @@ def main():
         raw = input("出勤日を入力してください（例: 1,2,5,6,7,...）: ")
         working_days = sorted(int(d.strip()) for d in raw.split(",") if d.strip())
 
-    # 入力検証
     days_in_month = calendar.monthrange(year, month)[1]
     invalid = [d for d in working_days if d < 1 or d > days_in_month]
     if invalid:
         print(f"エラー: {month}月に存在しない日付 {invalid}")
         sys.exit(1)
 
-    sheet_name = make_sheet_name(year, month, is_second)
-
-    wb = openpyxl.load_workbook(excel_path)
-
     if sheet_name in wb.sheetnames:
         print(f"警告: シート「{sheet_name}」は既に存在します。上書きします。")
         del wb[sheet_name]
 
-    # テンプレートをコピー
-    template_ws = find_template(wb, is_second)
+    # テンプレートをコピー（★・■シートを除いた最新日誌シート）
+    template_ws = find_template(wb)
+    print(f"テンプレート: 「{template_ws.title}」をコピー")
     new_ws = wb.copy_worksheet(template_ws)
     new_ws.title = sheet_name
 
     # 先頭に移動
     wb.move_sheet(new_ws, offset=-len(wb.sheetnames) + 1)
 
-    # ヘッダー更新
     update_header(new_ws, year, month, trainee_name)
-
-    # データ行を再設定
     alloc = reset_data_rows(new_ws, year, month, working_days, rng)
 
     wb.save(excel_path)
