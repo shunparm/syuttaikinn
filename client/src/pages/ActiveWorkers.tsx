@@ -3,7 +3,9 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, HardHat, MapPin, RefreshCw, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, HardHat, MapPin, RefreshCw, Users } from "lucide-react";
+
+const PAGE_SIZE = 10;
 
 function ElapsedTime({ clockIn }: { clockIn: string }) {
   const [elapsed, setElapsed] = useState(0);
@@ -33,6 +35,7 @@ export default function ActiveWorkers() {
   );
 
   const [showSuccess, setShowSuccess] = useState(false);
+  const [page, setPage] = useState(1);
   useEffect(() => {
     if (sessionStorage.getItem("clockInSuccess")) {
       sessionStorage.removeItem("clockInSuccess");
@@ -105,8 +108,9 @@ export default function ActiveWorkers() {
           </CardContent>
         </Card>
       ) : (
+        <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {workers.map((worker) => (
+          {workers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((worker) => (
             <Card key={worker.id} className="border-0 shadow-sm hover:shadow-md transition-all">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">
@@ -160,6 +164,25 @@ export default function ActiveWorkers() {
             </Card>
           ))}
         </div>
+        {Math.ceil(workers.length / PAGE_SIZE) > 1 && (
+          <div className="flex items-center justify-between px-2 py-3">
+            <span className="text-xs text-muted-foreground">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, workers.length)} / {workers.length}名
+            </span>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-xs px-2 tabular-nums">{page} / {Math.ceil(workers.length / PAGE_SIZE)}</span>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                onClick={() => setPage(p => Math.min(Math.ceil(workers.length / PAGE_SIZE), p + 1))} disabled={page === Math.ceil(workers.length / PAGE_SIZE)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

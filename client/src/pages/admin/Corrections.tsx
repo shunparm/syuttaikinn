@@ -14,7 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Shield, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
+import { Shield, CheckCircle, ChevronLeft, ChevronRight, XCircle, Clock, Trash2 } from "lucide-react";
+
+const PAGE_SIZE = 10;
 import { useLocation } from "wouter";
 
 const correctionTypeLabels: Record<string, string> = {
@@ -49,6 +51,8 @@ export default function AdminCorrections() {
   const [rejectReason, setRejectReason] = useState("");
   const [dialogType, setDialogType] = useState<"approve" | "reject" | "delete" | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
+  const [pendingPage, setPendingPage] = useState(1);
+  const [processedPage, setProcessedPage] = useState(1);
 
   const { data: requests, refetch } = trpc.correction.listAllCorrectionRequests.useQuery();
 
@@ -166,7 +170,7 @@ export default function AdminCorrections() {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             審査待ち ({pendingRequests.length}件)
           </h2>
-          {pendingRequests.map((req) => (
+          {pendingRequests.slice((pendingPage - 1) * PAGE_SIZE, pendingPage * PAGE_SIZE).map((req) => (
             <Card key={req.id} className="border-0 shadow-sm border-l-4 border-l-amber-400">
               <CardContent className="p-5">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -234,6 +238,24 @@ export default function AdminCorrections() {
               </CardContent>
             </Card>
           ))}
+          {Math.ceil(pendingRequests.length / PAGE_SIZE) > 1 && (
+            <div className="flex items-center justify-between px-2 py-3">
+              <span className="text-xs text-muted-foreground">
+                {(pendingPage - 1) * PAGE_SIZE + 1}–{Math.min(pendingPage * PAGE_SIZE, pendingRequests.length)} / {pendingRequests.length}件
+              </span>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                  onClick={() => setPendingPage(p => Math.max(1, p - 1))} disabled={pendingPage === 1}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs px-2 tabular-nums">{pendingPage} / {Math.ceil(pendingRequests.length / PAGE_SIZE)}</span>
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                  onClick={() => setPendingPage(p => Math.min(Math.ceil(pendingRequests.length / PAGE_SIZE), p + 1))} disabled={pendingPage === Math.ceil(pendingRequests.length / PAGE_SIZE)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -258,7 +280,7 @@ export default function AdminCorrections() {
                     </tr>
                   </thead>
                   <tbody>
-                    {processedRequests.map((req) => (
+                    {processedRequests.slice((processedPage - 1) * PAGE_SIZE, processedPage * PAGE_SIZE).map((req) => (
                       <tr key={req.id} className="border-b border-border/50 hover:bg-muted/20">
                         <td className="py-3 px-4 text-muted-foreground whitespace-nowrap text-xs">
                           {new Date(req.createdAt).toLocaleDateString("ja-JP")}
@@ -283,6 +305,24 @@ export default function AdminCorrections() {
                     ))}
                   </tbody>
                 </table>
+                {Math.ceil(processedRequests.length / PAGE_SIZE) > 1 && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+                    <span className="text-xs text-muted-foreground">
+                      {(processedPage - 1) * PAGE_SIZE + 1}–{Math.min(processedPage * PAGE_SIZE, processedRequests.length)} / {processedRequests.length}件
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                        onClick={() => setProcessedPage(p => Math.max(1, p - 1))} disabled={processedPage === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-xs px-2 tabular-nums">{processedPage} / {Math.ceil(processedRequests.length / PAGE_SIZE)}</span>
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                        onClick={() => setProcessedPage(p => Math.min(Math.ceil(processedRequests.length / PAGE_SIZE), p + 1))} disabled={processedPage === Math.ceil(processedRequests.length / PAGE_SIZE)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
