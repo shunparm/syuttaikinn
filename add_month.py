@@ -5,11 +5,11 @@
 番号割り当て・業務名・指導内容を自動入力して新月シートを追加する。
 
 使い方:
-    python add_month.py <Excelファイル> <年> <月> <氏名> [出勤日]
+    python add_month.py <Excelファイル> <年> <月> <氏名> [出勤日] [--second] [--seed N]
 
 例:
     python add_month.py 技能実習日誌.xlsx 2026 5 ヨザ 1,2,5,6,7,8,9,12,13,14,15,16,19,20,21,22,23
-    python add_month.py 技能実習日誌.xlsx 2026 5 リズキ          # 出勤日を対話入力
+    python add_month.py 技能実習日誌.xlsx 2026 5 リズキ --second   # 2人目シート
     python add_month.py 技能実習日誌.xlsx 2026 5 ヨザ --seed 42 1,2,5,6,7
 """
 
@@ -242,6 +242,7 @@ def print_summary(month: int, working_days: list, alloc: dict):
 def parse_args():
     args = list(sys.argv[1:])
     seed = None
+    is_second = False
 
     if "--seed" in args:
         idx = args.index("--seed")
@@ -249,9 +250,14 @@ def parse_args():
         args.pop(idx + 1)
         args.pop(idx)
 
+    if "--second" in args:
+        is_second = True
+        args.remove("--second")
+
     if len(args) < 4:
-        print("使い方: python add_month.py <Excelファイル> <年> <月> <氏名> [出勤日] [--seed N]")
+        print("使い方: python add_month.py <Excelファイル> <年> <月> <氏名> [出勤日] [--second] [--seed N]")
         print("例:     python add_month.py 技能実習日誌.xlsx 2026 5 ヨザ 1,2,5,6,7,8,9,12,13")
+        print("        python add_month.py 技能実習日誌.xlsx 2026 5 リズキ --second  # 2人目シート")
         sys.exit(1)
 
     excel_path = args[0]
@@ -260,11 +266,11 @@ def parse_args():
     trainee_name = args[3]
     working_days_str = args[4] if len(args) >= 5 else None
 
-    return excel_path, year, month, trainee_name, working_days_str, seed
+    return excel_path, year, month, trainee_name, working_days_str, seed, is_second
 
 
 def main():
-    excel_path, year, month, trainee_name, working_days_str, seed = parse_args()
+    excel_path, year, month, trainee_name, working_days_str, seed, is_second = parse_args()
     rng = random.Random(seed)
 
     # 出勤日の取得
@@ -283,7 +289,6 @@ def main():
         print(f"エラー: {month}月に存在しない日付 {invalid}")
         sys.exit(1)
 
-    is_second = "(2)" in trainee_name or "2人目" in trainee_name
     sheet_name = make_sheet_name(year, month, is_second)
 
     wb = openpyxl.load_workbook(excel_path)
