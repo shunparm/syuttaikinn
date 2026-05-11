@@ -90,9 +90,6 @@ export async function initDb() {
       ALTER TABLE correction_requests ALTER COLUMN "newClockInTime" DROP NOT NULL;
       ALTER TABLE correction_requests ALTER COLUMN "newClockOutTime" DROP NOT NULL;
       ALTER TABLE correction_requests ALTER COLUMN "newSiteId" DROP NOT NULL;
-      ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check;
-      ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'));
-      ALTER TABLE correction_requests ALTER COLUMN "attendanceRecordId" DROP NOT NULL;
       CREATE TABLE IF NOT EXISTS push_subscriptions (
         id SERIAL PRIMARY KEY,
         endpoint TEXT NOT NULL UNIQUE,
@@ -147,6 +144,23 @@ export async function initDb() {
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
     `);
+
+    // new_record型対応マイグレーション（個別実行で確実に適用）
+    const migrations = [
+      `ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check`,
+      `ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'))`,
+      `ALTER TABLE correction_requests ALTER COLUMN "attendanceRecordId" DROP NOT NULL`,
+    ];
+    for (const sql of migrations) {
+      try {
+        await client.query(sql);
+      } catch (e: any) {
+        // 制約が既に存在する場合など無視して続行
+        if (!e.message?.includes('already exists')) {
+          console.warn('Migration warning:', e.message);
+        }
+      }
+    }
   } finally {
     client.release();
   }
