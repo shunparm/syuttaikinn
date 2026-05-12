@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,11 +36,13 @@ export default function Export() {
   const [startDate, setStartDate] = useState(firstOfMonthJSTStr);
   const [endDate, setEndDate] = useState(todayJSTStr);
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>("all");
-  const [queryParams, setQueryParams] = useState({
-    startDate: new Date(firstOfMonthJSTStr + "T00:00:00+09:00"),
-    endDate:   new Date(todayJSTStr + "T23:59:59+09:00"),
-    employeeId: undefined as number | undefined,
-  });
+
+  // 入力値が変わると即座にクエリパラメータへ反映（集計ボタン不要）
+  const queryParams = useMemo(() => ({
+    startDate: new Date(startDate + "T00:00:00+09:00"),
+    endDate:   new Date(endDate   + "T23:59:59+09:00"),
+    employeeId: filterEmployeeId !== "all" ? Number(filterEmployeeId) : undefined,
+  }), [startDate, endDate, filterEmployeeId]);
 
   const { data: employees } = trpc.master.listEmployees.useQuery();
   const { data: allEmployees } = trpc.master.listEmployees.useQuery({});
@@ -61,14 +63,6 @@ export default function Export() {
   };
   const { data: csvData, isLoading: csvLoading } = trpc.export.generateCsvString.useQuery(queryParams);
   const { data: payrollCsvData, isLoading: payrollCsvLoading } = trpc.export.generatePayrollCsvString.useQuery(queryParams);
-
-  const handleSearch = () => {
-    setQueryParams({
-      startDate: new Date(startDate + "T00:00:00+09:00"),
-      endDate:   new Date(endDate   + "T23:59:59+09:00"),
-      employeeId: filterEmployeeId !== "all" ? Number(filterEmployeeId) : undefined,
-    });
-  };
 
   const handleDownload = () => {
     if (!csvData?.csv) {
@@ -172,9 +166,6 @@ export default function Export() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3 mt-4">
-            <Button onClick={handleSearch} variant="outline" size="sm">
-              集計を確認
-            </Button>
             <Button
               onClick={handleDownload}
               size="sm"
