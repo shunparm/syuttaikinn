@@ -23,6 +23,7 @@ export const masterRouter = router({
       pin: z.string().max(6).optional(),
       role: z.enum(["worker", "staff", "admin", "応援"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
+      payrollId: z.string().max(50).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -55,6 +56,7 @@ export const masterRouter = router({
       pin: z.string().max(6).optional(),
       role: z.enum(["worker", "staff", "admin", "応援"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
+      payrollId: z.string().max(50).optional().nullable(),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -97,6 +99,7 @@ export const masterRouter = router({
       siteName: z.string().min(1).max(255),
       location: z.string().max(255).optional(),
       status: z.enum(["active", "inactive"]).default("active"),
+      payrollCode: z.string().max(10).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -127,6 +130,7 @@ export const masterRouter = router({
       siteName: z.string().min(1).max(255).optional(),
       location: z.string().max(255).optional().nullable(),
       status: z.enum(["active", "inactive"]).optional(),
+      payrollCode: z.string().max(10).optional().nullable(),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();

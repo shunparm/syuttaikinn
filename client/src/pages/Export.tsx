@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, Users, Clock, Calendar } from "lucide-react";
+import { Download, FileSpreadsheet, Users, Clock, Calendar, Calculator } from "lucide-react";
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   paid_leave: "有給休暇",
@@ -60,6 +60,7 @@ export default function Export() {
     }
   };
   const { data: csvData, isLoading: csvLoading } = trpc.export.generateCsvString.useQuery(queryParams);
+  const { data: payrollCsvData, isLoading: payrollCsvLoading } = trpc.export.generatePayrollCsvString.useQuery(queryParams);
 
   const handleSearch = () => {
     setQueryParams({
@@ -85,6 +86,23 @@ export default function Export() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     toast.success("CSVをダウンロードしました");
+  };
+
+  const handlePayrollDownload = () => {
+    if (!payrollCsvData?.csv) {
+      toast.error("ダウンロードするデータがありません");
+      return;
+    }
+    const blob = new Blob([payrollCsvData.csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `給与計算用_${startDate}_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("給与計算用CSVをダウンロードしました");
   };
 
   const hasData = (exportData?.rows.length ?? 0) > 0 || (exportData?.leaveRows.length ?? 0) > 0;
@@ -153,18 +171,28 @@ export default function Export() {
               </Select>
             </div>
           </div>
-          <div className="flex gap-3 mt-4">
+          <div className="flex flex-wrap gap-3 mt-4">
             <Button onClick={handleSearch} variant="outline" size="sm">
               集計を確認
             </Button>
             <Button
               onClick={handleDownload}
               size="sm"
+              variant="outline"
               className="gap-2"
               disabled={csvLoading || !hasData}
             >
               <Download className="h-4 w-4" />
-              CSVダウンロード
+              出退勤CSV
+            </Button>
+            <Button
+              onClick={handlePayrollDownload}
+              size="sm"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              disabled={payrollCsvLoading || !hasData}
+            >
+              <Calculator className="h-4 w-4" />
+              給与計算用CSV
             </Button>
           </div>
         </CardContent>

@@ -240,4 +240,112 @@ export const exportRouter = router({
       const csvContent = [header, ...allRows.map(r => r.cells)].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
       return { csv: "﻿" + csvContent };
     }),
+
+  // 給与計算システム用CSV（Sheet4：出退勤入力 形式）
+  generatePayrollCsvString: publicProcedure
+    .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      const start = input.startDate;
+      const end   = input.endDate;
+      const startDateStr = toJSTDateStr(start);
+      const endDateStr   = toJSTDateStr(end);
+
+      const atConditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
+      if (input.employeeId) atConditions.push(eq(attendanceRecords.employeeId, input.employeeId));
+
+      const leaveConditions: any[] = [
+        eq(leaveRequests.status, "approved"),
+        gte(leaveRequests.requestDate, startDateStr),
+        lte(leaveRequests.requestDate, endDateStr),
+      ];
+      if (input.employeeId) leaveConditions.push(eq(leaveRequests.employeeId, input.employeeId));
+
+      const [rows, leaveRows] = await Promise.all([
+        db.select({
+          clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
+          workingMinutes: attendanceRecords.workingMinutes,
+          employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
+          payrollId: employeeMaster.payrollId,
+          siteName: siteMaster.siteName, payrollCode: siteMaster.payrollCode,
+        }).from(attendanceRecords)
+          .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
+          .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
+          .where(and(...atConditions)).orderBy(attendanceRecords.clockInTime),
+        db.select({
+          leaveType: leaveRequests.leaveType,
+          requestDate: leaveRequests.requestDate,
+          employeeName: employeeMaster.name,
+          employeeCode: employeeMaster.employeeId,
+          payrollId: employeeMaster.payrollId,
+        }).from(leaveRequests)
+          .innerJoin(employeeMaster, eq(leaveRequests.employeeId, employeeMaster.id))
+          .where(and(...leaveConditions)),
+      ]);
+
+      // 残業時間計算（8時間=480分超の分）
+      const calcOvertime = (wm: number | null | undefined): string => {
+        if (!wm || wm <= 480) return "0";
+        return ((wm - 480) / 60).toFixed(2).replace(/\.?0+$/, "");
+      };
+
+      // 時刻を HH:MM（JST）で返す
+      const fmtTime = (s: string | null | undefined): string => {
+        const d = toJSTDate(s);
+        if (!d) return "";
+        return `${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}`;
+      };
+
+      const LEAVE_ATTENDANCE_TYPE: Record<string, string> = {
+        paid_leave: "有給",
+        substitute_holiday: "代休",
+        special_leave: "特休",
+        holiday_request: "休日希望",
+      };
+
+      const header = ["日付","社員ID","氏名","区分","出勤区分","現場コード","現場名","出勤時刻","退勤時刻","残業時間(h)","遅刻早退(h)"];
+
+      type SortableRow = { sortKey: string; cells: string[] };
+
+      const atRows: SortableRow[] = rows.map(r => ({
+        sortKey: `${toJSTDateStr(new Date(r.clockInTime))}_${r.employeeCode}`,
+        cells: [
+          fmtDate(r.clockInTime),
+          r.payrollId ?? "",
+          r.employeeName,
+          "",
+          "○",
+          r.payrollCode ?? "",
+          r.siteName,
+          fmtTime(r.clockInTime),
+          fmtTime(r.clockOutTime),
+          calcOvertime(r.workingMinutes),
+          "0",
+        ],
+      }));
+
+      const lvRows: SortableRow[] = leaveRows.map(lr => {
+        const [y, m, d] = lr.requestDate.split("-");
+        return {
+          sortKey: `${lr.requestDate}_${lr.employeeCode}`,
+          cells: [
+            `${y}/${m}/${d}`,
+            lr.payrollId ?? "",
+            lr.employeeName,
+            "",
+            LEAVE_ATTENDANCE_TYPE[lr.leaveType] ?? lr.leaveType,
+            "",
+            "",
+            "",
+            "",
+            "0",
+            "0",
+          ],
+        };
+      });
+
+      const allRows = [...atRows, ...lvRows].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      const csvContent = [header, ...allRows.map(r => r.cells)].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+      return { csv: "﻿" + csvContent };
+    }),
 });
