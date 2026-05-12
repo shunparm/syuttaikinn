@@ -12,12 +12,34 @@ async function ensureNewRecordMigration() {
   if (newRecordMigrationDone) return;
   const client = await pool.connect();
   try {
+    // attendanceRecordId の NOT NULL 制約を解除
     await client.query(`ALTER TABLE correction_requests ALTER COLUMN "attendanceRecordId" DROP NOT NULL`);
-  } catch {}
+  } catch (e: any) {
+    console.log('DROP NOT NULL (skip):', e.message);
+  }
   try {
-    await client.query(`ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check`);
-    await client.query(`ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'))`);
-  } catch {}
+    // correctionType の CHECK 制約を名前に関わらず全て削除して再作成
+    await client.query(`
+      DO $$
+      DECLARE r RECORD;
+      BEGIN
+        FOR r IN
+          SELECT conname FROM pg_constraint
+          WHERE conrelid = 'correction_requests'::regclass
+            AND contype = 'c'
+            AND pg_get_constraintdef(oid) LIKE '%correctionType%'
+        LOOP
+          EXECUTE 'ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS "' || r.conname || '"';
+        END LOOP;
+      END $$
+    `);
+    await client.query(`
+      ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check
+      CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'))
+    `);
+  } catch (e: any) {
+    console.log('CHECK constraint update (skip):', e.message);
+  }
   newRecordMigrationDone = true;
   client.release();
 }
