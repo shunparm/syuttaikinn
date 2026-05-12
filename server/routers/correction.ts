@@ -1,10 +1,26 @@
 import { z } from "zod";
 import { eq, and, desc, ne, notInArray } from "drizzle-orm";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, pool } from "../db";
 import { correctionRequests, attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
 
 const iso = (d: Date) => d.toISOString();
+
+// new_record対応のDBマイグレーションを適用（初回のみ実行）
+let newRecordMigrationDone = false;
+async function ensureNewRecordMigration() {
+  if (newRecordMigrationDone) return;
+  const client = await pool.connect();
+  try {
+    await client.query(`ALTER TABLE correction_requests ALTER COLUMN "attendanceRecordId" DROP NOT NULL`);
+  } catch {}
+  try {
+    await client.query(`ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check`);
+    await client.query(`ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'))`);
+  } catch {}
+  newRecordMigrationDone = true;
+  client.release();
+}
 
 // 実働時間計算（12:00〜13:00 JST の重複分を差し引く、UTC環境対応）
 const JST_OFFSET = 9 * 60 * 60 * 1000;
@@ -65,6 +81,7 @@ export const correctionRouter = router({
         if (!input.newClockInTime || !input.newClockOutTime || !input.newSiteId) {
           throw new Error("新規記録追加には出勤時刻・退勤時刻・現場が必要です");
         }
+        await ensureNewRecordMigration();
       } else {
         if (!input.attendanceRecordId) throw new Error("対象記録を選択してください");
         const existing = await db.select().from(correctionRequests)
