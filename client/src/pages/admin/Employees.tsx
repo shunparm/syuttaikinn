@@ -34,7 +34,6 @@ type Employee = {
   pin?: string;
   role: string;
   status: string;
-  payrollId?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -48,8 +47,8 @@ export default function AdminEmployees() {
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
   const [page, setPage] = useState(1);
-  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; pin: string; role: RoleValue; payrollId: string }>({
-    employeeId: "", name: "", nameKana: "", pin: "", role: "worker", payrollId: "",
+  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; pin: string; role: RoleValue }>({
+    employeeId: "", name: "", nameKana: "", pin: "", role: "worker",
   });
 
   // 削除確認ダイアログ用
@@ -102,7 +101,7 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", nameKana: "", pin: "", role: "worker", payrollId: "" });
+    setForm({ employeeId: "", name: "", nameKana: "", pin: "", role: "worker" });
     setDialogOpen(true);
   };
 
@@ -114,7 +113,6 @@ export default function AdminEmployees() {
       nameKana: emp.nameKana ?? "",
       pin: emp.pin ?? "",
       role: (["worker", "staff", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
-      payrollId: emp.payrollId ?? "",
     });
     setDialogOpen(true);
   };
@@ -137,7 +135,6 @@ export default function AdminEmployees() {
         nameKana: form.nameKana || undefined,
         pin: form.pin || undefined,
         role: form.role,
-        payrollId: form.payrollId || null,
       });
     } else {
       createMutation.mutate({
@@ -146,7 +143,6 @@ export default function AdminEmployees() {
         nameKana: form.nameKana || undefined,
         pin: form.pin || undefined,
         role: form.role,
-        payrollId: form.payrollId || undefined,
       });
     }
   };
@@ -348,18 +344,6 @@ export default function AdminEmployees() {
                 className="h-10"
                 type="password"
                 maxLength={6}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                給与計算システム用ID
-                <span className="text-xs text-muted-foreground ml-2">（例: EMP001）</span>
-              </Label>
-              <Input
-                placeholder="例: EMP001"
-                value={form.payrollId}
-                onChange={(e) => setForm({ ...form, payrollId: e.target.value })}
-                className="h-10"
               />
             </div>
             <div className="space-y-2">

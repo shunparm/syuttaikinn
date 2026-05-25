@@ -266,8 +266,7 @@ export const exportRouter = router({
           clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
           workingMinutes: attendanceRecords.workingMinutes,
           employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
-          payrollId: employeeMaster.payrollId,
-          siteName: siteMaster.siteName, payrollCode: siteMaster.payrollCode,
+          siteName: siteMaster.siteName, siteCode: siteMaster.siteId,
         }).from(attendanceRecords)
           .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
           .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
@@ -277,7 +276,6 @@ export const exportRouter = router({
           requestDate: leaveRequests.requestDate,
           employeeName: employeeMaster.name,
           employeeCode: employeeMaster.employeeId,
-          payrollId: employeeMaster.payrollId,
         }).from(leaveRequests)
           .innerJoin(employeeMaster, eq(leaveRequests.employeeId, employeeMaster.id))
           .where(and(...leaveConditions)),
@@ -311,11 +309,11 @@ export const exportRouter = router({
         sortKey: `${toJSTDateStr(new Date(r.clockInTime))}_${r.employeeCode}`,
         cells: [
           fmtDate(r.clockInTime),
-          r.payrollId ?? "",
+          r.employeeCode,
           r.employeeName,
           "",
           "○",
-          r.payrollCode ?? "",
+          r.siteCode,
           r.siteName,
           fmtTime(r.clockInTime),
           fmtTime(r.clockOutTime),
@@ -330,7 +328,7 @@ export const exportRouter = router({
           sortKey: `${lr.requestDate}_${lr.employeeCode}`,
           cells: [
             `${y}/${m}/${d}`,
-            lr.payrollId ?? "",
+            lr.employeeCode,
             lr.employeeName,
             "",
             LEAVE_ATTENDANCE_TYPE[lr.leaveType] ?? lr.leaveType,

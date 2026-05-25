@@ -28,7 +28,6 @@ export const employeeMaster = pgTable("employee_master", {
   pin: text("pin"),
   role: text("role").default("worker").notNull(), // 'worker' | 'staff' | 'admin'
   status: text("status").default("active").notNull(), // 'active' | 'inactive'
-  payrollId: text("payrollId"), // 給与計算システム用ID（例: EMP001）
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
 });
@@ -43,7 +42,6 @@ export const siteMaster = pgTable("site_master", {
   siteName: text("siteName").notNull(),
   location: text("location"),
   status: text("status").default("active").notNull(), // 'active' | 'inactive'
-  payrollCode: text("payrollCode"), // 給与計算システム用コード（例: A）
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
 });
