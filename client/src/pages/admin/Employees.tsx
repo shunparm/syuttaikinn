@@ -37,7 +37,7 @@ type Employee = {
   updatedAt: string;
 };
 
-type RoleValue = "worker" | "admin" | "応援";
+type RoleValue = "worker" | "staff" | "admin" | "応援";
 
 export default function AdminEmployees() {
   const { user } = useAuth();
@@ -110,7 +110,7 @@ export default function AdminEmployees() {
       employeeId: emp.employeeId,
       name: emp.name,
       nameKana: emp.nameKana ?? "",
-      role: (["worker", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
+      role: (["worker", "staff", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
       password: "",
     });
     setDialogOpen(true);
@@ -155,12 +155,14 @@ export default function AdminEmployees() {
 
   const roleLabel = (role: string) => {
     if (role === "admin") return "管理者";
+    if (role === "staff") return "事務";
     if (role === "応援") return "応援";
     return "作業員";
   };
 
   const roleBadgeClass = (role: string) => {
     if (role === "admin") return "bg-purple-100 text-purple-700";
+    if (role === "staff") return "bg-blue-100 text-blue-700";
     if (role === "応援") return "bg-orange-100 text-orange-700";
     return "bg-gray-100 text-gray-600";
   };
@@ -342,6 +344,7 @@ export default function AdminEmployees() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="worker">作業員</SelectItem>
+                  <SelectItem value="staff">事務</SelectItem>
                   <SelectItem value="admin">管理者</SelectItem>
                   <SelectItem value="応援">応援</SelectItem>
                 </SelectContent>

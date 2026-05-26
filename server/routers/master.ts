@@ -22,7 +22,7 @@ export const masterRouter = router({
       name: z.string().min(1).max(255),
       nameKana: z.string().optional(),
       password: z.string().min(4).optional(),
-      role: z.enum(["worker", "admin", "応援"]).default("worker"),
+      role: z.enum(["worker", "staff", "admin", "応援"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
     }))
     .mutation(async ({ input }) => {
@@ -56,7 +56,7 @@ export const masterRouter = router({
       name: z.string().min(1).max(255).optional(),
       nameKana: z.string().optional(),
       password: z.string().min(4).optional(),
-      role: z.enum(["worker", "admin", "応援"]).optional(),
+      role: z.enum(["worker", "staff", "admin", "応援"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
     }))
     .mutation(async ({ input }) => {
