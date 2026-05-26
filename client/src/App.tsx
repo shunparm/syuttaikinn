@@ -23,8 +23,8 @@ import AdminUsers from "./pages/admin/Users";
 import Login from "./pages/Login";
 import NotificationSettings from "./pages/NotificationSettings";
 
-// PIN認証ページは未ログインでもアクセス可能なラッパー（DashboardLayoutの認証チェックをバイパス）
-function PublicPinLayout({ children }: { children: React.ReactNode }) {
+// 作業員向けページ: ログイン不要でアクセス可能
+function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <DashboardLayout requireAuth={false}>
       {children}
@@ -36,15 +36,15 @@ function Router() {
   return (
     <Switch>
       <Route path="/login">{() => <Login />}</Route>
-      {/* PIN認証ページ: Manusログイン不要 */}
-      <Route path="/clock-in">{() => <PublicPinLayout><ClockIn /></PublicPinLayout>}</Route>
-      <Route path="/clock-out">{() => <PublicPinLayout><ClockOut /></PublicPinLayout>}</Route>
-      <Route path="/correction">{() => <PublicPinLayout><Correction /></PublicPinLayout>}</Route>
-      <Route path="/leave-request">{() => <PublicPinLayout><LeaveRequest /></PublicPinLayout>}</Route>
+      {/* 作業員向けページ: ログイン不要 */}
+      <Route path="/clock-in">{() => <PublicLayout><ClockIn /></PublicLayout>}</Route>
+      <Route path="/clock-out">{() => <PublicLayout><ClockOut /></PublicLayout>}</Route>
+      <Route path="/correction">{() => <PublicLayout><Correction /></PublicLayout>}</Route>
+      <Route path="/leave-request">{() => <PublicLayout><LeaveRequest /></PublicLayout>}</Route>
       {/* 認証不要ページ */}
-      <Route path="/">{() => <PublicPinLayout><Home /></PublicPinLayout>}</Route>
-      <Route path="/records">{() => <PublicPinLayout><Records /></PublicPinLayout>}</Route>
-      <Route path="/notification-settings">{() => <PublicPinLayout><NotificationSettings /></PublicPinLayout>}</Route>
+      <Route path="/">{() => <PublicLayout><Home /></PublicLayout>}</Route>
+      <Route path="/records">{() => <PublicLayout><Records /></PublicLayout>}</Route>
+      <Route path="/notification-settings">{() => <PublicLayout><NotificationSettings /></PublicLayout>}</Route>
       {/* その他のページ: ログイン必須 */}
       <Route>
         {() => (

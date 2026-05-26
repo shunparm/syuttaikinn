@@ -79,7 +79,7 @@ export const correctionRequests = pgTable("correction_requests", {
   newClockOutTime: text("newClockOutTime"),
   newSiteId: integer("newSiteId").references(() => siteMaster.id),
   status: text("status").default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
-  approvedBy: integer("approvedBy").references(() => employeeMaster.id),
+  approvedBy: integer("approvedBy"),
   approvedByName: text("approvedByName"),
   approvedAt: text("approvedAt"),
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
@@ -97,7 +97,7 @@ export const leaveRequests = pgTable("leave_requests", {
   requestDate: text("requestDate").notNull(), // YYYY-MM-DD (JST)
   reason: text("reason"),
   status: text("status").default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
-  approvedBy: integer("approvedBy").references(() => employeeMaster.id),
+  approvedBy: integer("approvedBy"),
   approvedByName: text("approvedByName"),
   approvedAt: text("approvedAt"),
   note: text("note"), // 管理者コメント
