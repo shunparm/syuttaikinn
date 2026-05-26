@@ -66,6 +66,15 @@ const adminMenuItems = [
   { icon: UserCog, label: "スタッフ管理", path: "/admin/users" },
 ];
 
+// モバイル底部ナビゲーション（よく使う5項目）
+const bottomNavItems = [
+  { icon: BarChart3, label: "ホーム", path: "/", activeColor: "text-violet-600" },
+  { icon: LogIn, label: "出勤", path: "/clock-in", activeColor: "text-sky-600" },
+  { icon: LogOut, label: "退勤", path: "/clock-out", activeColor: "text-red-500" },
+  { icon: FilePen, label: "申請", path: "/correction", activeColor: "text-orange-500" },
+  { icon: CalendarDays, label: "休暇", path: "/leave-request", activeColor: "text-green-600" },
+];
+
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 260;
 const MIN_WIDTH = 200;
@@ -321,7 +330,6 @@ function DashboardLayoutContent({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              // 未ログイン時（PIN認証ページ用）
               !isCollapsed && (
                 <button
                   onClick={() => { window.location.href = loginUrl; }}
@@ -335,8 +343,8 @@ function DashboardLayoutContent({
           </SidebarFooter>
         </Sidebar>
 
-        {/* リサイズハンドル */}
-        {!isCollapsed && (
+        {/* リサイズハンドル（PC用） */}
+        {!isCollapsed && !isMobile && (
           <div
             className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors"
             onMouseDown={() => setIsResizing(true)}
@@ -353,12 +361,44 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-2">
               <HardHat className="h-4 w-4 text-primary" />
               <span className="font-semibold text-sm text-foreground">
-                {activeItem?.label ?? "出退勤管理"}
+                {activeItem?.label.split("/")[0].trim() ?? "出退勤管理"}
               </span>
             </div>
           </div>
         )}
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+
+        {/* コンテンツエリア（モバイルは底部ナビ分の余白を確保） */}
+        <main className={`flex-1 p-4 md:p-6 ${isMobile ? "pb-24" : ""}`}>{children}</main>
+
+        {/* モバイル底部ナビゲーション */}
+        {isMobile && (
+          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t border-border">
+            <div className="flex items-stretch justify-around h-16">
+              {bottomNavItems.map((item) => {
+                const isActive = location === item.path;
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => setLocation(item.path)}
+                    className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full px-1 transition-colors relative"
+                  >
+                    {isActive && (
+                      <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-current" style={{ color: "inherit" }} />
+                    )}
+                    <item.icon
+                      className={`h-5 w-5 transition-colors ${isActive ? item.activeColor : "text-muted-foreground"}`}
+                    />
+                    <span
+                      className={`text-[10px] font-medium transition-colors leading-tight ${isActive ? item.activeColor : "text-muted-foreground"}`}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        )}
       </SidebarInset>
     </>
   );

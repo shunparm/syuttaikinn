@@ -1,7 +1,8 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { AlertCircle, Building2, CalendarDays, CheckCircle2, Clock, FilePen, HardHat, LogIn, LogOut, TrendingUp, Users } from "lucide-react";
+import { AlertCircle, Building2, CalendarDays, CalendarPlus, CheckCircle2, Clock, FilePen, HardHat, LogIn, LogOut, TrendingUp, Users, X } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useLang } from "@/hooks/useLang";
@@ -44,11 +45,21 @@ function StatCard({
   );
 }
 
+const ONBOARDING_KEY = "onboarding_dismissed_v1";
+
 export default function Home() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const { lang, toggle, t } = useLang();
+  const [onboardingDismissed, setOnboardingDismissed] = useState(
+    () => localStorage.getItem(ONBOARDING_KEY) === "true"
+  );
+
+  const dismissOnboarding = () => {
+    localStorage.setItem(ONBOARDING_KEY, "true");
+    setOnboardingDismissed(true);
+  };
   const { data: stats, isLoading } = trpc.attendance.getDashboardStats.useQuery();
   const { data: activeWorkers } = trpc.attendance.getActiveWorkers.useQuery();
   const isAdmin = user?.role === "admin" || user?.role === "staff";
@@ -98,6 +109,73 @@ export default function Home() {
           </button>
         </div>
       )}
+      {/* 作業員向けオンボーディングカード */}
+      {!isAdmin && !onboardingDismissed && (
+        <Card className="border border-violet-200 bg-violet-50 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-violet-900">はじめての方へ — 使い方ガイド</p>
+                  <button
+                    onClick={dismissOnboarding}
+                    className="p-1 rounded-full hover:bg-violet-100 text-violet-400 hover:text-violet-600 transition-colors"
+                    aria-label="閉じる"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-violet-700 mt-1">このアプリで毎日の出退勤を記録できます。3ステップだけです。</p>
+                <div className="mt-3 space-y-2">
+                  <button
+                    onClick={() => setLocation("/clock-in")}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-white border border-violet-100 hover:bg-violet-50 transition-colors text-left"
+                  >
+                    <div className="p-1.5 rounded-lg bg-sky-100 shrink-0">
+                      <LogIn className="h-4 w-4 text-sky-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{t("① 出勤ボタンを押す", "① Tekan tombol masuk kerja")}</p>
+                      <p className="text-xs text-muted-foreground">{t("現場に着いたら現場を選んで押す", "Pilih lokasi lalu tekan tombol")}</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setLocation("/clock-out")}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-white border border-violet-100 hover:bg-violet-50 transition-colors text-left"
+                  >
+                    <div className="p-1.5 rounded-lg bg-red-100 shrink-0">
+                      <LogOut className="h-4 w-4 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{t("② 退勤ボタンを押す", "② Tekan tombol pulang kerja")}</p>
+                      <p className="text-xs text-muted-foreground">{t("帰る前に作業内容を入力して押す", "Isi laporan lalu tekan tombol")}</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setLocation("/correction")}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-white border border-violet-100 hover:bg-violet-50 transition-colors text-left"
+                  >
+                    <div className="p-1.5 rounded-lg bg-orange-100 shrink-0">
+                      <FilePen className="h-4 w-4 text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{t("③ 打刻を間違えたら訂正申請", "③ Jika ada kesalahan, ajukan koreksi")}</p>
+                      <p className="text-xs text-muted-foreground">{t("打刻ミスは申請ページから修正できます", "Buka halaman申請 untuk mengkoreksi")}</p>
+                    </div>
+                  </button>
+                </div>
+                <button
+                  onClick={dismissOnboarding}
+                  className="mt-3 text-xs text-violet-500 hover:text-violet-700 underline underline-offset-2"
+                >
+                  理解しました — 次回から表示しない
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ページヘッダー */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
