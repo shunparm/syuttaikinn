@@ -20,7 +20,6 @@ export const masterRouter = router({
       employeeId: z.string().min(1).max(50),
       name: z.string().min(1).max(255),
       nameKana: z.string().optional(),
-      pin: z.string().max(6).optional(),
       role: z.enum(["worker", "staff", "admin", "応援"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
     }))
@@ -36,7 +35,7 @@ export const masterRouter = router({
       if (inactiveExisting.length > 0) {
         // 復活（UPDATE）
         await db.update(employeeMaster)
-          .set({ name: input.name, nameKana: input.nameKana, pin: input.pin, role: input.role, status: "active", updatedAt: now })
+          .set({ name: input.name, nameKana: input.nameKana, role: input.role, status: "active", updatedAt: now })
           .where(eq(employeeMaster.id, inactiveExisting[0].id));
       } else {
         // 通常INSERT
@@ -52,7 +51,6 @@ export const masterRouter = router({
       employeeId: z.string().min(1).max(50).optional(),
       name: z.string().min(1).max(255).optional(),
       nameKana: z.string().optional(),
-      pin: z.string().max(6).optional(),
       role: z.enum(["worker", "staff", "admin", "応援"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
     }))
