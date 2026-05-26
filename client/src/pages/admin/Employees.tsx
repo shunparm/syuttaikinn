@@ -37,7 +37,7 @@ type Employee = {
   updatedAt: string;
 };
 
-type RoleValue = "worker" | "staff" | "admin" | "応援";
+type RoleValue = "worker" | "admin" | "応援";
 
 export default function AdminEmployees() {
   const { user } = useAuth();
@@ -46,8 +46,8 @@ export default function AdminEmployees() {
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
   const [page, setPage] = useState(1);
-  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; role: RoleValue }>({
-    employeeId: "", name: "", nameKana: "", role: "worker",
+  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; role: RoleValue; password: string }>({
+    employeeId: "", name: "", nameKana: "", role: "worker", password: "",
   });
 
   // 削除確認ダイアログ用
@@ -100,7 +100,7 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", nameKana: "", role: "worker" });
+    setForm({ employeeId: "", name: "", nameKana: "", role: "worker", password: "" });
     setDialogOpen(true);
   };
 
@@ -110,7 +110,8 @@ export default function AdminEmployees() {
       employeeId: emp.employeeId,
       name: emp.name,
       nameKana: emp.nameKana ?? "",
-      role: (["worker", "staff", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
+      role: (["worker", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
+      password: "",
     });
     setDialogOpen(true);
   };
@@ -132,6 +133,7 @@ export default function AdminEmployees() {
         name: form.name,
         nameKana: form.nameKana || undefined,
         role: form.role,
+        password: form.password || undefined,
       });
     } else {
       createMutation.mutate({
@@ -139,6 +141,7 @@ export default function AdminEmployees() {
         name: form.name,
         nameKana: form.nameKana || undefined,
         role: form.role,
+        password: form.password || undefined,
       });
     }
   };
@@ -152,14 +155,12 @@ export default function AdminEmployees() {
 
   const roleLabel = (role: string) => {
     if (role === "admin") return "管理者";
-    if (role === "staff") return "事務";
     if (role === "応援") return "応援";
     return "作業員";
   };
 
   const roleBadgeClass = (role: string) => {
     if (role === "admin") return "bg-purple-100 text-purple-700";
-    if (role === "staff") return "bg-blue-100 text-blue-700";
     if (role === "応援") return "bg-orange-100 text-orange-700";
     return "bg-gray-100 text-gray-600";
   };
@@ -334,19 +335,34 @@ export default function AdminEmployees() {
               <Label className="text-sm font-medium">役割</Label>
               <Select
                 value={form.role}
-                onValueChange={(v) => setForm({ ...form, role: v as RoleValue })}
+                onValueChange={(v) => setForm({ ...form, role: v as RoleValue, password: "" })}
               >
                 <SelectTrigger className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="worker">作業員</SelectItem>
-                  <SelectItem value="staff">事務</SelectItem>
                   <SelectItem value="admin">管理者</SelectItem>
                   <SelectItem value="応援">応援</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {form.role === "admin" && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  ログインパスワード
+                  {editTarget && <span className="text-xs text-muted-foreground ml-2">（空欄のまま保存すると変更しません）</span>}
+                </Label>
+                <Input
+                  placeholder={editTarget ? "変更する場合のみ入力" : "4文字以上で設定してください"}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="h-10"
+                  type="password"
+                />
+                <p className="text-xs text-muted-foreground">管理者はこのパスワードと給与計算IDでログインできます</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>キャンセル</Button>

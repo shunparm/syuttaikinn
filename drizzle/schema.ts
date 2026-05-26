@@ -25,6 +25,7 @@ export const employeeMaster = pgTable("employee_master", {
   employeeId: text("employeeId").notNull().unique(),
   name: text("name").notNull(),
   nameKana: text("nameKana"),
+  passwordHash: text("passwordHash"),
   role: text("role").default("worker").notNull(), // 'worker' | 'staff' | 'admin'
   status: text("status").default("active").notNull(), // 'active' | 'inactive'
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
@@ -79,6 +80,7 @@ export const correctionRequests = pgTable("correction_requests", {
   newSiteId: integer("newSiteId").references(() => siteMaster.id),
   status: text("status").default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
   approvedBy: integer("approvedBy").references(() => employeeMaster.id),
+  approvedByName: text("approvedByName"),
   approvedAt: text("approvedAt"),
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
@@ -96,6 +98,7 @@ export const leaveRequests = pgTable("leave_requests", {
   reason: text("reason"),
   status: text("status").default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
   approvedBy: integer("approvedBy").references(() => employeeMaster.id),
+  approvedByName: text("approvedByName"),
   approvedAt: text("approvedAt"),
   note: text("note"), // 管理者コメント
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),

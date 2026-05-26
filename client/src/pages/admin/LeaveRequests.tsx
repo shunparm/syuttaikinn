@@ -45,6 +45,7 @@ type LeaveRequestRow = {
   reason: string | null;
   status: string;
   approvedBy: number | null;
+  approvedByName: string | null;
   approvedAt: string | null;
   note: string | null;
   createdAt: string;
@@ -300,6 +301,9 @@ export default function AdminLeaveRequests() {
                       <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">
                         状態
                       </th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">
+                        承認者
+                      </th>
                       <th className="py-3 px-4"></th>
                     </tr>
                   </thead>
@@ -322,6 +326,9 @@ export default function AdminLeaveRequests() {
                           {new Date(req.requestDate).toLocaleDateString("ja-JP")}
                         </td>
                         <td className="py-3 px-4">{statusBadge(req.status)}</td>
+                        <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                          {req.approvedByName ?? "—"}
+                        </td>
                         <td className="py-3 px-4">
                           <Button
                             size="sm"
