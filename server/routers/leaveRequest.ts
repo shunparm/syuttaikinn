@@ -80,6 +80,7 @@ export const leaveRequestRouter = router({
         reason: leaveRequests.reason,
         status: leaveRequests.status,
         approvedBy: leaveRequests.approvedBy,
+        approvedByName: leaveRequests.approvedByName,
         approvedAt: leaveRequests.approvedAt,
         note: leaveRequests.note,
         createdAt: leaveRequests.createdAt,
@@ -110,6 +111,7 @@ export const leaveRequestRouter = router({
         .set({
           status: "approved",
           approvedBy: ctx.user.id,
+          approvedByName: ctx.user.name ?? null,
           approvedAt: now,
           note: input.note ?? null,
           updatedAt: now,
@@ -136,6 +138,7 @@ export const leaveRequestRouter = router({
         .set({
           status: "rejected",
           approvedBy: ctx.user.id,
+          approvedByName: ctx.user.name ?? null,
           approvedAt: now,
           note: input.note ?? null,
           updatedAt: now,

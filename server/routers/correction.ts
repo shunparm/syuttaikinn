@@ -159,7 +159,7 @@ export const correctionRouter = router({
       employeeId: correctionRequests.employeeId, reason: correctionRequests.reason, correctionType: correctionRequests.correctionType,
       newClockInTime: correctionRequests.newClockInTime, newClockOutTime: correctionRequests.newClockOutTime,
       newSiteId: correctionRequests.newSiteId,
-      status: correctionRequests.status, approvedBy: correctionRequests.approvedBy, approvedAt: correctionRequests.approvedAt,
+      status: correctionRequests.status, approvedBy: correctionRequests.approvedBy, approvedByName: correctionRequests.approvedByName, approvedAt: correctionRequests.approvedAt,
       createdAt: correctionRequests.createdAt, employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
       clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime, siteName: siteMaster.siteName,
     }).from(correctionRequests)
@@ -178,7 +178,7 @@ export const correctionRouter = router({
       const req = rows[0];
       if (req.status !== "pending") throw new Error("この申請は既に処理済みです");
       const now = iso(new Date());
-      await db.update(correctionRequests).set({ status: "approved", approvedBy: ctx.user.id, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
+      await db.update(correctionRequests).set({ status: "approved", approvedBy: ctx.user.id, approvedByName: ctx.user.name ?? null, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
 
       if (req.correctionType === "new_record") {
         if (!req.newClockInTime || !req.newSiteId) throw new Error("新規記録に必要な情報が不足しています");
@@ -229,7 +229,7 @@ export const correctionRouter = router({
       if (rows.length === 0) throw new Error("申請が見つかりません");
       if (rows[0].status !== "pending") throw new Error("この申請は既に処理済みです");
       const now = iso(new Date());
-      await db.update(correctionRequests).set({ status: "rejected", approvedBy: ctx.user.id, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
+      await db.update(correctionRequests).set({ status: "rejected", approvedBy: ctx.user.id, approvedByName: ctx.user.name ?? null, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
       return { success: true };
     }),
 

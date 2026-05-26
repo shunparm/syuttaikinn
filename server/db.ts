@@ -46,6 +46,9 @@ export async function initDb() {
       ALTER TABLE employee_master ADD CONSTRAINT employee_master_role_check CHECK(role IN ('worker', 'staff', 'admin', '応援'));
       ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "nameKana" TEXT;
       ALTER TABLE employee_master DROP COLUMN IF EXISTS pin;
+      ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "passwordHash" TEXT;
+      ALTER TABLE correction_requests ADD COLUMN IF NOT EXISTS "approvedByName" TEXT;
+      ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS "approvedByName" TEXT;
       ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
       ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('user', 'admin', 'staff'));
       CREATE TABLE IF NOT EXISTS site_master (

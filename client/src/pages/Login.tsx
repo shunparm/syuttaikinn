@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 
 export default function Login() {
+  const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,7 +20,7 @@ export default function Login() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ employeeId: employeeId || undefined, password }),
         credentials: "include",
       });
       if (!response.ok) {
@@ -55,8 +56,22 @@ export default function Login() {
           )}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="employeeId" className="text-sm font-medium">
+                給与計算ID
+              </Label>
+              <Input
+                id="employeeId"
+                type="text"
+                placeholder="例: EMP001"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                disabled={loading}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium">
-                管理者パスワード
+                パスワード
               </Label>
               <Input
                 id="password"
@@ -65,7 +80,6 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                autoFocus
               />
             </div>
             <Button
