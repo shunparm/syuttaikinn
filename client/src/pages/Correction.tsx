@@ -26,6 +26,14 @@ const correctionTypeLabels = {
   new_record: "記録の追加（打刻忘れ）",
 };
 
+const correctionTypeDescriptions: Record<string, string> = {
+  time_correction: "出勤・退勤の時刻が間違っている時に使います。例：9:15に出勤したのに9:00と記録されている",
+  cancel: "その記録自体を削除したい時に使います。例：誤って出勤ボタンを押してしまった",
+  site_change: "記録された現場が間違っている時に使います。例：A現場で記録されているがB現場が正しい",
+  new_record: "出勤と退勤の両方を打刻し忘れた時に使います。後からまとめて1日分の記録を追加します",
+  other: "上記に当てはまらない修正がある時に使います。理由欄に詳しく記入してください",
+};
+
 function formatTime(date: Date | string | null) {
   if (!date) return "―";
   return new Date(date).toLocaleTimeString("ja-JP", {
@@ -338,6 +346,10 @@ export default function Correction() {
                     <SelectItem value="other">その他</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="flex items-start gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>{correctionTypeDescriptions[correctionType]}</span>
+                </div>
               </div>
 
               {/* 対象記録選択（new_record 以外のみ表示） */}

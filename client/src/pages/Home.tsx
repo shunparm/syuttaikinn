@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { Building2, CalendarDays, Clock, HardHat, LogIn, LogOut, TrendingUp, Users } from "lucide-react";
+import { AlertCircle, Building2, CalendarDays, CheckCircle2, Clock, FilePen, HardHat, LogIn, LogOut, TrendingUp, Users } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useLang } from "@/hooks/useLang";
@@ -51,6 +51,12 @@ export default function Home() {
   const { lang, toggle, t } = useLang();
   const { data: stats, isLoading } = trpc.attendance.getDashboardStats.useQuery();
   const { data: activeWorkers } = trpc.attendance.getActiveWorkers.useQuery();
+  const isAdmin = user?.role === "admin" || user?.role === "staff";
+  const { data: allCorrections } = trpc.correction.listAllCorrectionRequests.useQuery(undefined, { enabled: isAdmin });
+  const { data: allLeaveRequests } = trpc.leaveRequest.listAll.useQuery(undefined, { enabled: isAdmin });
+  const pendingCorrectionCount = allCorrections?.filter((c) => c.status === "pending").length ?? 0;
+  const pendingLeaveCount = allLeaveRequests?.filter((l) => l.status === "pending").length ?? 0;
+  const totalPending = pendingCorrectionCount + pendingLeaveCount;
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
@@ -103,6 +109,79 @@ export default function Home() {
           <span className="text-lg font-semibold text-primary tabular-nums">{timeStr}</span>
         </div>
       </div>
+
+      {/* 初回セットアップガイド（管理者かつ作業員or現場が未登録） */}
+      {user?.role === "admin" && !isLoading && ((stats?.totalEmployees ?? 0) === 0 || (stats?.totalSites ?? 0) === 0) && (
+        <Card className="border border-amber-200 bg-amber-50 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-amber-100 shrink-0">
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-amber-900">はじめに初期設定が必要です</p>
+                <p className="text-sm text-amber-700 mt-1">出退勤管理を開始するには、以下の順番で設定してください。</p>
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    {(stats?.totalEmployees ?? 0) > 0
+                      ? <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      : <span className="w-4 h-4 rounded-full bg-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0">1</span>
+                    }
+                    <span className={(stats?.totalEmployees ?? 0) > 0 ? "text-emerald-700 line-through" : "text-amber-800"}>作業員を登録する</span>
+                    {(stats?.totalEmployees ?? 0) === 0 && (
+                      <button onClick={() => setLocation("/admin/employees")} className="ml-auto text-xs font-medium text-amber-700 underline underline-offset-2">登録ページへ →</button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    {(stats?.totalSites ?? 0) > 0
+                      ? <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      : <span className="w-4 h-4 rounded-full bg-amber-300 flex items-center justify-center text-xs font-bold text-amber-900 shrink-0">2</span>
+                    }
+                    <span className={(stats?.totalSites ?? 0) > 0 ? "text-emerald-700 line-through" : "text-amber-800"}>工事現場を登録する</span>
+                    {(stats?.totalSites ?? 0) === 0 && (
+                      <button onClick={() => setLocation("/admin/sites")} className="ml-auto text-xs font-medium text-amber-700 underline underline-offset-2">登録ページへ →</button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-amber-800/50">
+                    <span className="w-4 h-4 rounded-full bg-amber-200 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                    出勤打刻を開始する
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 保留中の申請通知（管理者・スタッフ向け） */}
+      {isAdmin && totalPending > 0 && (
+        <div className="flex flex-col sm:flex-row gap-3">
+          {pendingCorrectionCount > 0 && (
+            <button
+              onClick={() => setLocation("/admin/corrections")}
+              className="flex items-center gap-3 px-4 py-3 bg-orange-50 border border-orange-200 rounded-xl text-left hover:bg-orange-100 transition-colors flex-1"
+            >
+              <FilePen className="h-5 w-5 text-orange-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-orange-800">訂正申請 {pendingCorrectionCount}件 が審査待ちです</p>
+                <p className="text-xs text-orange-600">タップして確認する</p>
+              </div>
+            </button>
+          )}
+          {pendingLeaveCount > 0 && (
+            <button
+              onClick={() => setLocation("/admin/leave-requests")}
+              className="flex items-center gap-3 px-4 py-3 bg-sky-50 border border-sky-200 rounded-xl text-left hover:bg-sky-100 transition-colors flex-1"
+            >
+              <CalendarDays className="h-5 w-5 text-sky-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-sky-800">休暇申請 {pendingLeaveCount}件 が審査待ちです</p>
+                <p className="text-xs text-sky-600">タップして確認する</p>
+              </div>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* KPIカード */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

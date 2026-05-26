@@ -63,7 +63,7 @@ const adminMenuItems = [
   { icon: Shield, label: "訂正申請管理", path: "/admin/corrections" },
   { icon: CalendarDays, label: "休暇申請管理", path: "/admin/leave-requests" },
   { icon: Download, label: "CSV出力", path: "/export" },
-  { icon: UserCog, label: "ユーザー管理", path: "/admin/users" },
+  { icon: UserCog, label: "スタッフ管理", path: "/admin/users" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
