@@ -26,7 +26,7 @@ function minutesToHHMM(min: number | null | undefined) {
 
 export default function Records() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin" || user?.role === "staff";
+  const isAdmin = user?.role === "admin";
   // JST基準の今日・月初を計算
   const todayJST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
   const todayJSTStr = todayJST.toISOString().split("T")[0];

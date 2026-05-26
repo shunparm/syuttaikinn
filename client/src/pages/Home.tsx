@@ -62,7 +62,7 @@ export default function Home() {
   };
   const { data: stats, isLoading } = trpc.attendance.getDashboardStats.useQuery();
   const { data: activeWorkers } = trpc.attendance.getActiveWorkers.useQuery();
-  const isAdmin = user?.role === "admin" || user?.role === "staff";
+  const isAdmin = user?.role === "admin";
   const { data: allCorrections } = trpc.correction.listAllCorrectionRequests.useQuery(undefined, { enabled: isAdmin });
   const { data: allLeaveRequests } = trpc.leaveRequest.listAll.useQuery(undefined, { enabled: isAdmin });
   const pendingCorrectionCount = allCorrections?.filter((c) => c.status === "pending").length ?? 0;

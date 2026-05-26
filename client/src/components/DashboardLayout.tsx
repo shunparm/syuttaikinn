@@ -154,7 +154,7 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const isAdmin = user?.role === "admin" || user?.role === "staff";
+  const isAdmin = user?.role === "admin";
 
   const activeItem =
     [...workerMenuItems, ...adminMenuItems].find((item) => item.path === location);
@@ -300,14 +300,12 @@ function DashboardLayoutContent({
                           <Badge
                             variant={isAdmin ? "default" : "secondary"}
                             className={`text-[10px] px-1.5 py-0 h-4 ${
-                              user?.role === "admin"
+                              isAdmin
                                 ? "bg-sidebar-primary/20 text-sidebar-primary border-0"
-                                : user?.role === "staff"
-                                ? "bg-blue-100 text-blue-700 border-0"
                                 : "bg-sidebar-accent/50 text-sidebar-foreground/60 border-0"
                             }`}
                           >
-                            {user?.role === "admin" ? "管理者" : user?.role === "staff" ? "事務" : "作業員"}
+                            {isAdmin ? "管理者" : "作業員"}
                           </Badge>
                         </div>
                       </div>
