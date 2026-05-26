@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eq, and, desc, ne, notInArray } from "drizzle-orm";
-import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
+import { router, publicProcedure, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { getDb, pool } from "../db";
 import { correctionRequests, attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
 
@@ -152,7 +152,7 @@ export const correctionRouter = router({
       return rows.filter((r) => r.status === input.status);
     }),
 
-  listAllCorrectionRequests: protectedProcedure.query(async () => {
+  listAllCorrectionRequests: adminProcedure.query(async () => {
     const db = getDb();
     return db.select({
       id: correctionRequests.id, attendanceRecordId: correctionRequests.attendanceRecordId,
@@ -169,7 +169,7 @@ export const correctionRouter = router({
       .orderBy(desc(correctionRequests.createdAt));
   }),
 
-  approveCorrectionRequest: protectedProcedure
+  approveCorrectionRequest: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
@@ -221,7 +221,7 @@ export const correctionRouter = router({
       return { success: true };
     }),
 
-  rejectCorrectionRequest: protectedProcedure
+  rejectCorrectionRequest: adminProcedure
     .input(z.object({ id: z.number(), reason: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
@@ -234,7 +234,7 @@ export const correctionRouter = router({
     }),
 
   // 訂正申請削除（管理者のみ・処理済みのみ）
-  deleteCorrectionRequest: protectedProcedure
+  deleteCorrectionRequest: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = getDb();

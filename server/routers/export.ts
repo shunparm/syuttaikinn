@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { router, publicProcedure } from "../_core/trpc";
+import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster, leaveRequests } from "../../drizzle/schema";
 
@@ -69,7 +69,7 @@ function computeWorkingMinutes(clockInStr: string | null | undefined, clockOutSt
 }
 
 export const exportRouter = router({
-  getExportData: publicProcedure
+  getExportData: adminProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
@@ -154,7 +154,7 @@ export const exportRouter = router({
       return { rows: rowsWithMinutes, summaries, leaveRows };
     }),
 
-  generateCsvString: publicProcedure
+  generateCsvString: adminProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
@@ -242,7 +242,7 @@ export const exportRouter = router({
     }),
 
   // 給与計算システム用CSV（Sheet4：出退勤入力 形式）
-  generatePayrollCsvString: publicProcedure
+  generatePayrollCsvString: adminProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
