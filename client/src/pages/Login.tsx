@@ -57,7 +57,7 @@ export default function Login() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="employeeId" className="text-sm font-medium">
-                給与計算ID
+                従業員ID
               </Label>
               <Input
                 id="employeeId"

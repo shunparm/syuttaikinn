@@ -123,7 +123,7 @@ export default function AdminEmployees() {
 
   const handleSubmit = () => {
     if (!form.employeeId || !form.name) {
-      toast.error("給与計算IDと氏名は必須です");
+      toast.error("従業員IDと氏名は必須です");
       return;
     }
     if (editTarget) {
@@ -207,7 +207,7 @@ export default function AdminEmployees() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">給与計算ID</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">従業員ID</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">氏名</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">役割</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">ステータス</th>
@@ -298,7 +298,7 @@ export default function AdminEmployees() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                給与計算ID <span className="text-destructive">*</span>
+                従業員ID <span className="text-destructive">*</span>
               </Label>
               <Input
                 placeholder="例: EMP001"
@@ -360,7 +360,7 @@ export default function AdminEmployees() {
                   className="h-10"
                   type="password"
                 />
-                <p className="text-xs text-muted-foreground">管理者はこのパスワードと給与計算IDでログインできます</p>
+                <p className="text-xs text-muted-foreground">管理者はこのパスワードと従業員IDでログインできます</p>
               </div>
             )}
           </div>
