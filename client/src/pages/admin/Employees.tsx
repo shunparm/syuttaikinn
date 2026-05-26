@@ -31,7 +31,6 @@ type Employee = {
   employeeId: string;
   name: string;
   nameKana?: string;
-  pin?: string;
   role: string;
   status: string;
   createdAt: string;
@@ -47,8 +46,8 @@ export default function AdminEmployees() {
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
   const [page, setPage] = useState(1);
-  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; pin: string; role: RoleValue }>({
-    employeeId: "", name: "", nameKana: "", pin: "", role: "worker",
+  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; role: RoleValue }>({
+    employeeId: "", name: "", nameKana: "", role: "worker",
   });
 
   // 削除確認ダイアログ用
@@ -101,7 +100,7 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", nameKana: "", pin: "", role: "worker" });
+    setForm({ employeeId: "", name: "", nameKana: "", role: "worker" });
     setDialogOpen(true);
   };
 
@@ -111,7 +110,6 @@ export default function AdminEmployees() {
       employeeId: emp.employeeId,
       name: emp.name,
       nameKana: emp.nameKana ?? "",
-      pin: emp.pin ?? "",
       role: (["worker", "staff", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
     });
     setDialogOpen(true);
@@ -133,7 +131,6 @@ export default function AdminEmployees() {
         employeeId: form.employeeId,
         name: form.name,
         nameKana: form.nameKana || undefined,
-        pin: form.pin || undefined,
         role: form.role,
       });
     } else {
@@ -141,7 +138,6 @@ export default function AdminEmployees() {
         employeeId: form.employeeId,
         name: form.name,
         nameKana: form.nameKana || undefined,
-        pin: form.pin || undefined,
         role: form.role,
       });
     }
@@ -332,19 +328,6 @@ export default function AdminEmployees() {
                 value={form.nameKana}
                 onChange={(e) => setForm({ ...form, nameKana: e.target.value })}
                 className="h-10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                PINコード <span className="text-xs text-muted-foreground">（事務・管理者のログインパスワード）</span>
-              </Label>
-              <Input
-                placeholder="4〜6桁の数字"
-                value={form.pin}
-                onChange={(e) => setForm({ ...form, pin: e.target.value })}
-                className="h-10"
-                type="password"
-                maxLength={6}
               />
             </div>
             <div className="space-y-2">
