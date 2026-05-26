@@ -97,10 +97,10 @@ export default function AdminUsers() {
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Shield className="h-6 w-6 text-primary" />
-          ユーザー管理
+          スタッフアカウント管理
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          ログインユーザーの一覧と管理者権限の付与・剥奪、打刻催促通知の送信を行います
+          事務・管理者としてログインするアカウントの管理です。打刻のみ行う作業員は「作業員管理」で登録してください。
         </p>
       </div>
 
