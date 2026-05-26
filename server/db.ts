@@ -145,9 +145,9 @@ export async function initDb() {
       );
     `);
 
-    // 給与計算システム連携用カラム追加
-    try { await client.query(`ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "payrollId" TEXT`); } catch {}
-    try { await client.query(`ALTER TABLE site_master ADD COLUMN IF NOT EXISTS "payrollCode" TEXT`); } catch {}
+    // 給与IDを一元化したため不要になったカラムを削除
+    try { await client.query(`ALTER TABLE employee_master DROP COLUMN IF EXISTS "payrollId"`); } catch {}
+    try { await client.query(`ALTER TABLE site_master DROP COLUMN IF EXISTS "payrollCode"`); } catch {}
 
     // new_record型対応マイグレーション（個別実行で確実に適用）
     try {

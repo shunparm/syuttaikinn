@@ -25,7 +25,6 @@ type Site = {
   siteName: string;
   location: string | null;
   status: string;
-  payrollCode?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -41,8 +40,7 @@ export default function AdminSites() {
     siteId: string;
     siteName: string;
     location: string;
-    payrollCode: string;
-  }>({ siteId: "", siteName: "", location: "", payrollCode: "" });
+  }>({ siteId: "", siteName: "", location: "" });
 
   // 削除確認ダイアログ用
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -94,7 +92,7 @@ export default function AdminSites() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ siteId: "", siteName: "", location: "", payrollCode: "" });
+    setForm({ siteId: "", siteName: "", location: "" });
     setDialogOpen(true);
   };
 
@@ -104,7 +102,6 @@ export default function AdminSites() {
       siteId: site.siteId,
       siteName: site.siteName,
       location: site.location ?? "",
-      payrollCode: site.payrollCode ?? "",
     });
     setDialogOpen(true);
   };
@@ -116,17 +113,16 @@ export default function AdminSites() {
 
   const handleSubmit = () => {
     if (!form.siteId || !form.siteName) {
-      toast.error("現場IDと現場名は必須です");
+      toast.error("給与計算コードと現場名は必須です");
       return;
     }
     const payload = {
       siteId: form.siteId,
       siteName: form.siteName,
       location: form.location || undefined,
-      payrollCode: form.payrollCode || undefined,
     };
     if (editTarget) {
-      updateMutation.mutate({ id: editTarget.id, ...payload, payrollCode: form.payrollCode || null });
+      updateMutation.mutate({ id: editTarget.id, ...payload });
     } else {
       createMutation.mutate(payload);
     }
@@ -181,7 +177,7 @@ export default function AdminSites() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">現場ID</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">給与計算コード</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">現場名</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">場所</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">ステータス</th>
@@ -277,14 +273,15 @@ export default function AdminSites() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                現場ID <span className="text-destructive">*</span>
+                給与計算コード <span className="text-destructive">*</span>
               </Label>
               <Input
-                placeholder="例: SITE001"
+                placeholder="例: A01"
                 value={form.siteId}
                 onChange={(e) => setForm({ ...form, siteId: e.target.value })}
                 className="h-10"
               />
+              <p className="text-xs text-muted-foreground">給与計算システムと同じコードを入力してください</p>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">
@@ -304,19 +301,6 @@ export default function AdminSites() {
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
                 className="h-10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                給与計算システム用コード
-                <span className="text-xs text-muted-foreground ml-2">（例: A）</span>
-              </Label>
-              <Input
-                placeholder="例: A"
-                value={form.payrollCode}
-                onChange={(e) => setForm({ ...form, payrollCode: e.target.value })}
-                className="h-10"
-                maxLength={10}
               />
             </div>
           </div>
