@@ -301,43 +301,57 @@ export const exportRouter = router({
         holiday_request: "休日希望",
       };
 
-      const header = ["日付","社員ID","氏名","区分","出勤区分","現場コード","現場名","出勤時刻","退勤時刻","残業時間(h)","遅刻早退(h)"];
+      // 実働時間を時間単位（小数）で返す
+      const fmtHours = (minutes: number | null | undefined): string => {
+        if (!minutes && minutes !== 0) return "";
+        const h = minutes / 60;
+        return h % 1 === 0 ? String(h) : h.toFixed(2).replace(/0+$/, "");
+      };
+
+      const header = ["日付","社員ID","氏名","区分","出勤区分","現場コード","現場名","出勤時刻","退勤時刻","残業時間(h)","遅刻早退(h)","備考","実働時間(h)"];
 
       type SortableRow = { sortKey: string; cells: string[] };
 
-      const atRows: SortableRow[] = rows.map(r => ({
-        sortKey: `${toJSTDateStr(new Date(r.clockInTime))}_${r.employeeCode}`,
-        cells: [
-          fmtDate(r.clockInTime),
-          r.employeeCode,
-          r.employeeName,
-          "",
-          "○",
-          r.siteCode,
-          r.siteName,
-          fmtTime(r.clockInTime),
-          fmtTime(r.clockOutTime),
-          calcOvertime(r.workingMinutes),
-          "0",
-        ],
-      }));
+      const atRows: SortableRow[] = rows.map(r => {
+        const wm = r.workingMinutes ?? computeWorkingMinutes(r.clockInTime, r.clockOutTime);
+        return {
+          sortKey: `${toJSTDateStr(new Date(r.clockInTime))}_${r.employeeCode}`,
+          cells: [
+            fmtDate(r.clockInTime),   // A: 日付
+            r.employeeCode,            // B: 社員ID
+            r.employeeName,            // C: 氏名
+            "",                        // D: 区分
+            "○",                      // E: 出勤区分
+            r.siteCode,               // F: 現場コード
+            r.siteName,               // G: 現場名
+            fmtTime(r.clockInTime),   // H: 出勤時刻
+            fmtTime(r.clockOutTime),  // I: 退勤時刻
+            calcOvertime(wm),          // J: 残業時間(h)
+            "0",                       // K: 遅刻早退(h)
+            "",                        // L: 備考
+            fmtHours(wm),             // M: 実働時間(h)
+          ],
+        };
+      });
 
       const lvRows: SortableRow[] = leaveRows.map(lr => {
         const [y, m, d] = lr.requestDate.split("-");
         return {
           sortKey: `${lr.requestDate}_${lr.employeeCode}`,
           cells: [
-            `${y}/${m}/${d}`,
-            lr.employeeCode,
-            lr.employeeName,
-            "",
-            LEAVE_ATTENDANCE_TYPE[lr.leaveType] ?? lr.leaveType,
-            "",
-            "",
-            "",
-            "",
-            "0",
-            "0",
+            `${y}/${m}/${d}`,                                    // A: 日付
+            lr.employeeCode,                                      // B: 社員ID
+            lr.employeeName,                                      // C: 氏名
+            "",                                                   // D: 区分
+            LEAVE_ATTENDANCE_TYPE[lr.leaveType] ?? lr.leaveType, // E: 出勤区分
+            "",                                                   // F: 現場コード
+            "",                                                   // G: 現場名
+            "",                                                   // H: 出勤時刻
+            "",                                                   // I: 退勤時刻
+            "0",                                                  // J: 残業時間(h)
+            "0",                                                  // K: 遅刻早退(h)
+            "",                                                   // L: 備考
+            "0",                                                  // M: 実働時間(h)
           ],
         };
       });
