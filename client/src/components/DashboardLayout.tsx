@@ -33,6 +33,7 @@ import {
   HardHat,
   LogIn,
   LogOut,
+  LucideIcon,
   PanelLeft,
   Settings2,
   Shield,
@@ -57,7 +58,7 @@ const workerMenuItems = [
   { icon: Settings2, label: "通知設定", path: "/notification-settings", iconColor: "text-sky-500" },
 ];
 
-const adminMenuItems = [
+const adminMenuItems: { icon: LucideIcon; label: string; path: string; iconColor?: string }[] = [
   { icon: Users, label: "作業員管理", path: "/admin/employees" },
   { icon: Building2, label: "現場管理", path: "/admin/sites" },
   { icon: Shield, label: "訂正申請管理", path: "/admin/corrections" },
