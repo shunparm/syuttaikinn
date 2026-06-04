@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """技能実習日誌 自動生成スクリプト
 
-★日誌自動生成シートの出勤入力から番号・業務名・指導内容を自動算出し、
-STEP4振り分け表に書き込む。--transfer オプションで日誌シートへも自動転記。
+「月次入力」シートの出勤情報から番号・業務名・指導内容を自動算出し、
+★日誌自動生成のSTEP4振り分け表に書き込む。
+--transfer オプションで対象月の日誌シートへも自動転記。
 
 使い方:
     python generate_diary.py <Excelファイル>
-    python generate_diary.py <Excelファイル> --transfer          # 1人目シートへ転記
-    python generate_diary.py <Excelファイル> --transfer --second  # 2人目シートへ転記
+    python generate_diary.py <Excelファイル> --transfer     # 日誌シートへ転記
     python generate_diary.py <Excelファイル> --seed 42
 """
 
@@ -19,7 +19,8 @@ import sys
 
 import openpyxl
 
-AUTO_SHEET = "★日誌自動生成"
+INPUT_SHEET = "月次入力"    # 年・月・出勤日を入力するシート
+AUTO_SHEET  = "★日誌自動生成"  # STEP4 出力先シート
 
 MONTHLY_REQUIRED = {
     1:  {1: 91, 2: 10, 3: 44, 4: 8, 5: 15, 6: 8},
@@ -107,19 +108,17 @@ def shuffle_no_triple(lst: list, rng: random.Random) -> list:
 
 
 def read_working_days(ws, days_in_month: int) -> list:
-    """行9/10（1〜15日）と行11/12（16〜31日）から出勤日リストを返す。
+    """月次入力シートの行9/10（1〜15日）と行11/12（16〜31日）から出勤日リストを返す。
 
     行9/11に日付番号、行10/12に出勤フラグ（1=出勤）が入る構造。
     列は1始まり（A=1）。
     """
     working = []
-    # 1〜15日: 行9で日付番号、行10で出勤フラグ
     for col in range(1, 16):
         day = ws.cell(row=9, column=col).value
         flag = ws.cell(row=10, column=col).value
         if day and (flag == 1 or flag == "1") and int(day) <= days_in_month:
             working.append(int(day))
-    # 16〜31日: 行11で日付番号、行12で出勤フラグ
     for col in range(1, 17):
         day = ws.cell(row=11, column=col).value
         flag = ws.cell(row=12, column=col).value
@@ -130,7 +129,7 @@ def read_working_days(ws, days_in_month: int) -> list:
 
 def write_step4(ws, year: int, month: int, working_days: list,
                 alloc: dict, num_seq: list, work_idx: dict):
-    """STEP4振り分け表（行27〜57）に結果を書き込む。"""
+    """★日誌自動生成のSTEP4振り分け表（行27〜57）に結果を書き込む。"""
     days_in_month = calendar.monthrange(year, month)[1]
     OUTPUT_ROW = 27
 
@@ -138,12 +137,11 @@ def write_step4(ws, year: int, month: int, working_days: list,
         row = OUTPUT_ROW + day - 1
         d = datetime.date(year, month, day) if day <= days_in_month else None
 
-        # 月末より後の行はクリア
         if day > days_in_month:
-            ws.cell(row=row, column=3).value = None  # C: 出勤
-            ws.cell(row=row, column=4).value = None  # D: 番号
-            ws.cell(row=row, column=10).value = None  # J: 業務名
-            ws.cell(row=row, column=11).value = None  # K: 指導内容
+            ws.cell(row=row, column=3).value = None
+            ws.cell(row=row, column=4).value = None
+            ws.cell(row=row, column=10).value = None
+            ws.cell(row=row, column=11).value = None
             continue
 
         ws.cell(row=row, column=2).value = WEEKDAY_JP[d.weekday()]  # B: 曜日
@@ -157,24 +155,22 @@ def write_step4(ws, year: int, month: int, working_days: list,
             shidou = shidou_list[work_idx[num] % len(shidou_list)]
             work_idx[num] += 1
 
-            ws.cell(row=row, column=3).value = "出"   # C
-            ws.cell(row=row, column=4).value = num    # D
-            ws.cell(row=row, column=10).value = wname  # J
-            ws.cell(row=row, column=11).value = shidou  # K
+            ws.cell(row=row, column=3).value = "出"
+            ws.cell(row=row, column=4).value = num
+            ws.cell(row=row, column=10).value = wname
+            ws.cell(row=row, column=11).value = shidou
         else:
-            ws.cell(row=row, column=3).value = "休"   # C
-            ws.cell(row=row, column=4).value = None   # D
-            ws.cell(row=row, column=10).value = None   # J
-            ws.cell(row=row, column=11).value = None   # K
+            ws.cell(row=row, column=3).value = "休"
+            ws.cell(row=row, column=4).value = None
+            ws.cell(row=row, column=10).value = None
+            ws.cell(row=row, column=11).value = None
 
 
-def transfer_to_diary(wb, ws_auto, year: int, month: int,
-                      supervisor: str, is_second: bool):
+def transfer_to_diary(wb, ws_auto, year: int, month: int, supervisor: str):
     """★日誌自動生成のSTEP4データを対象月の日誌シートへ転記する。"""
-    # シート名の候補を試す（末尾スペースや (2) のバリエーション）
     candidates = [
-        f"{year}.{month} (2)" if is_second else f"{year}.{month}",
-        f"{year}.{month}  (2)" if is_second else f"{year}.{month} ",
+        f"{year}.{month}",
+        f"{year}.{month} ",
     ]
     ws_diary = None
     found_name = None
@@ -190,24 +186,24 @@ def transfer_to_diary(wb, ws_auto, year: int, month: int,
         return
 
     days_in_month = calendar.monthrange(year, month)[1]
-    OUTPUT_ROW = 27   # ★日誌自動生成の出力開始行
-    DIARY_ROW = 9     # 日誌シートのデータ開始行
+    OUTPUT_ROW = 27
+    DIARY_ROW = 9
 
     transferred = 0
     for day in range(1, days_in_month + 1):
         src_row = OUTPUT_ROW + day - 1
         dst_row = DIARY_ROW + day - 1
 
-        attendance = ws_auto.cell(row=src_row, column=3).value  # C: 出/休
-        num = ws_auto.cell(row=src_row, column=4).value          # D: 番号
-        wname = ws_auto.cell(row=src_row, column=10).value       # J: 業務名
-        shidou = ws_auto.cell(row=src_row, column=11).value      # K: 指導内容
+        attendance = ws_auto.cell(row=src_row, column=3).value
+        num        = ws_auto.cell(row=src_row, column=4).value
+        wname      = ws_auto.cell(row=src_row, column=10).value
+        shidou     = ws_auto.cell(row=src_row, column=11).value
 
         if attendance == "出" and num is not None:
-            ws_diary.cell(row=dst_row, column=2).value = wname    # B: 業務名
-            ws_diary.cell(row=dst_row, column=4).value = num      # D: 番号
-            ws_diary.cell(row=dst_row, column=5).value = shidou   # E: 指導内容
-            ws_diary.cell(row=dst_row, column=8).value = supervisor  # H: 指導者
+            ws_diary.cell(row=dst_row, column=2).value = wname
+            ws_diary.cell(row=dst_row, column=4).value = num
+            ws_diary.cell(row=dst_row, column=5).value = shidou
+            ws_diary.cell(row=dst_row, column=8).value = supervisor
             transferred += 1
         else:
             ws_diary.cell(row=dst_row, column=2).value = "休み"
@@ -240,7 +236,6 @@ def parse_args():
     args = list(sys.argv[1:])
     seed = None
     do_transfer = False
-    is_second = False
 
     if "--seed" in args:
         idx = args.index("--seed")
@@ -250,35 +245,34 @@ def parse_args():
     if "--transfer" in args:
         do_transfer = True
         args.remove("--transfer")
-    if "--second" in args:
-        is_second = True
-        args.remove("--second")
 
     if len(args) < 1:
-        print("使い方: python generate_diary.py <Excelファイル> [--transfer] [--second] [--seed N]")
+        print("使い方: python generate_diary.py <Excelファイル> [--transfer] [--seed N]")
         sys.exit(1)
 
-    return args[0], seed, do_transfer, is_second
+    return args[0], seed, do_transfer
 
 
 def main():
-    excel_path, seed, do_transfer, is_second = parse_args()
+    excel_path, seed, do_transfer = parse_args()
     rng = random.Random(seed)
 
     wb = openpyxl.load_workbook(excel_path)
 
-    if AUTO_SHEET not in wb.sheetnames:
-        print(f"エラー: シート「{AUTO_SHEET}」が見つかりません。")
-        sys.exit(1)
+    for sheet_name in (INPUT_SHEET, AUTO_SHEET):
+        if sheet_name not in wb.sheetnames:
+            print(f"エラー: シート「{sheet_name}」が見つかりません。")
+            sys.exit(1)
 
-    ws = wb[AUTO_SHEET]
+    ws_input = wb[INPUT_SHEET]   # 読み取り専用（年・月・出勤日）
+    ws_auto  = wb[AUTO_SHEET]    # 書き込み先（STEP4）
 
-    year = int(ws["B5"].value)
-    month = int(ws["E5"].value)
-    supervisor = ws["I5"].value or "中原"
+    year       = int(ws_input["B5"].value)
+    month      = int(ws_input["E5"].value)
+    supervisor = ws_input["I5"].value or "中原"
     days_in_month = calendar.monthrange(year, month)[1]
 
-    working_days = read_working_days(ws, days_in_month)
+    working_days = read_working_days(ws_input, days_in_month)
     n_working = len(working_days)
 
     print(f"対象: {year}年{month}月 / 指導員: {supervisor}")
@@ -293,10 +287,10 @@ def main():
 
     work_idx = {k: 0 for k in NUM_TO_WORKS}
 
-    write_step4(ws, year, month, working_days, alloc, num_seq, work_idx)
+    write_step4(ws_auto, year, month, working_days, alloc, num_seq, work_idx)
 
     if do_transfer:
-        transfer_to_diary(wb, ws, year, month, supervisor, is_second)
+        transfer_to_diary(wb, ws_auto, year, month, supervisor)
 
     wb.save(excel_path)
     print(f"\n書き込み完了: {excel_path}")
