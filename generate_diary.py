@@ -104,7 +104,7 @@ def shuffle_no_triple(lst: list, rng: random.Random) -> list:
 
 
 def read_working_days(ws, days_in_month: int) -> list:
-    """月次入力シートの行9/10（1〜15日）と行11/12（16〜31日）から出勤日リストを返す。
+    """月次入力シートの行9/10（1〜15日）と行12/13（16〜31日）から出勤日リストを返す。
 
     行9/12に日付番号、行10/13に出勤フラグ（1=出勤）が入る構造。
     列は1始まり（A=1）。
