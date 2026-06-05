@@ -6,6 +6,13 @@ import ExcelJS from "exceljs";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster, leaveRequests } from "../../drizzle/schema";
 
+// ─── 対象実習生（氏名に含まれるキーワード）───────────────────────
+const TRAINEE_KEYWORDS = ["アルフィアン", "ヨザ", "リズキ", "ディマス"];
+
+function isTrainee(name: string): boolean {
+  return TRAINEE_KEYWORDS.some(k => name.includes(k));
+}
+
 // ─── JST ユーティリティ ─────────────────────────────────────────
 const JST_OFFSET = 9 * 60 * 60 * 1000;
 
@@ -67,7 +74,7 @@ const FALLBACK_WORKS: Record<number, Array<[string, string[]]>> = {
   ],
 };
 
-// ─── training_content.json を読み込んで NUM_TO_WORKS を構築 ─────
+// ─── training_content.json 読み込み ────────────────────────────
 function loadNumToWorks(): Record<number, Array<[string, string[]]>> {
   const jsonPath = join(process.cwd(), "training_content.json");
   if (!existsSync(jsonPath)) return FALLBACK_WORKS;
@@ -77,22 +84,14 @@ function loadNumToWorks(): Record<number, Array<[string, string[]]>> {
     const result: Record<number, Array<[string, string[]]>> = {};
     for (let num = 1; num <= 6; num++) {
       const worksDict: Record<string, Record<string, number>> = entries[String(num)] ?? {};
-      if (Object.keys(worksDict).length === 0) {
-        result[num] = FALLBACK_WORKS[num] ?? [];
-        continue;
-      }
+      if (Object.keys(worksDict).length === 0) { result[num] = FALLBACK_WORKS[num] ?? []; continue; }
       const sorted = Object.entries(worksDict).sort(
         ([, a], [, b]) => Object.values(b).reduce((s, v) => s + v, 0) - Object.values(a).reduce((s, v) => s + v, 0)
       );
-      result[num] = sorted.map(([w, gs]) => [
-        w,
-        Object.entries(gs).sort(([, a], [, b]) => b - a).map(([g]) => g),
-      ]);
+      result[num] = sorted.map(([w, gs]) => [w, Object.entries(gs).sort(([, a], [, b]) => b - a).map(([g]) => g)]);
     }
     return result;
-  } catch {
-    return FALLBACK_WORKS;
-  }
+  } catch { return FALLBACK_WORKS; }
 }
 
 const NUM_TO_WORKS = loadNumToWorks();
@@ -103,21 +102,16 @@ function allocateDays(nDays: number, month: number): Record<number, number> {
   const minD: Record<number, number> = {};
   for (const [k, v] of Object.entries(reqs)) minD[Number(k)] = Math.ceil(v / 8);
   const totalMin = Object.values(minD).reduce((s, v) => s + v, 0);
-
   const alloc = { ...minD };
-  if (nDays >= totalMin) {
-    alloc[1] += nDays - totalMin;
-  } else if (nDays > 0) {
-    const deficit = totalMin - nDays;
-    const take1 = Math.min(deficit, alloc[1] - 1);
-    alloc[1] -= take1;
-  }
+  if (nDays >= totalMin) { alloc[1] += nDays - totalMin; }
+  else if (nDays > 0) { alloc[1] -= Math.min(totalMin - nDays, alloc[1] - 1); }
   return alloc;
 }
 
 function shuffleNoTriple(arr: number[], seed: number): number[] {
-  const rng = (() => { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0x100000000; }; })();
-  const shuffle = (a: number[]) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  let s = seed >>> 0;
+  const rng = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 0x100000000; };
+  const shuffle = (a: number[]) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } };
   for (let t = 0; t < 200; t++) {
     shuffle(arr);
     if (arr.every((v, i) => i < 2 || !(v === arr[i - 1] && v === arr[i - 2]))) return arr;
@@ -125,53 +119,156 @@ function shuffleNoTriple(arr: number[], seed: number): number[] {
   return arr;
 }
 
-// ─── 日誌シート生成（exceljs）───────────────────────────────────
+// ─── スタイルヘルパー ────────────────────────────────────────────
+const FONT_NAME = "游ゴシック";
+
+function thinBorder(): Partial<ExcelJS.Borders> {
+  const t = { style: "thin" as const };
+  return { top: t, bottom: t, left: t, right: t };
+}
+
+function setCell(
+  ws: ExcelJS.Worksheet, coord: string, value: ExcelJS.CellValue,
+  opts: { size?: number; bold?: boolean; hAlign?: ExcelJS.Alignment["horizontal"]; vAlign?: ExcelJS.Alignment["vertical"]; wrap?: boolean; border?: boolean; bottomBorder?: boolean } = {}
+) {
+  const c = ws.getCell(coord);
+  c.value = value;
+  c.font = { name: FONT_NAME, size: opts.size ?? 9, bold: opts.bold ?? false };
+  c.alignment = { horizontal: opts.hAlign ?? "left", vertical: opts.vAlign ?? "center", wrapText: opts.wrap ?? false };
+  if (opts.border) c.border = thinBorder();
+  if (opts.bottomBorder) c.border = { bottom: { style: "thin" } };
+}
+
+// ─── 右側参照テーブル（固定内容）────────────────────────────────
+const REF_TABLE: [number, string, string][] = [
+  // [row, I列, J列]
+  [9,  "1-(1)", "走行操作作業"],
+  [10, "①",    "発進操作"],
+  [11, "②",    "平坦地走行操作"],
+  [12, "③",    "登坂操作"],
+  [13, "④",    "降坂操作"],
+  [14, "⑤",    "停止操作"],
+  [15, "⑥",    "下車操作"],
+  [16, "1-(2)", "掘削作業"],
+  [17, "①",    "溝掘削作業"],
+  [18, "②",    "建築物の基礎掘削作業"],
+  [19, "③",    "地表面の浅い掘削作業"],
+  [20, "④",    "法面の切取り仕上げ作業"],
+  [21, "⑤",    "土砂積込み作業"],
+  [22, "⑥",    "固結した土砂の破砕及び積込み作業"],
+  [23, "⑦",    "岩石の移動、除去作業"],
+  [24, "⑧",    "粉砕した砕石の積込み作業"],
+  [25, "1-(3)", "建設機械点検作業"],
+  [26, "①",    "毎日整備"],
+  [27, "②",    "始業前点検"],
+  [28, "③",    "作業終了後の機体の清掃及び燃料補給"],
+  [29, "2-(4)", "安全衛生業務"],
+  [30, "①",    "雇入れ時等の安全衛生教育"],
+  [31, "②",    "作業開始前の安全装置等の点検作業"],
+  [32, "③",    "建設機械施工職種に必要な整理整頓作業"],
+  [33, "④",    "建設機械施工職種の作業用機械及び周囲の安全確認作業"],
+  [34, "⑤",    "保護具の着用と服装の安全点検作業"],
+  [35, "⑥",    "安全装置の使用等による作業"],
+  [36, "⑦",    "労働安全衛生上の有害性を防止するための作業"],
+  [37, "⑧",    "異常時の応急措置を習得するための作業"],
+  [38, "3①",   "押土整地作業"],
+  [39, "②",    "積込み作業"],
+  [40, "③",    "締固め作業"],
+  [41, "④",    "建設機械施工管理作業"],
+  [42, "⑤",    "土工作業(対象職種・作業に係る手作業の作業）"],
+  [43, "⑥",    "建設機械の管理及び点検・整備作業"],
+  [44, "⑦",    "各種揚重運搬機械の運転作業"],
+  [45, "⑧",    "玉掛け作業(特別教育又は技能講習が必要）"],
+  [46, "5",     "建設機械の移送車両への積載及び移送作業"],
+  [47, "",      "休み"],
+];
+
+// ─── 日誌シート生成 ─────────────────────────────────────────────
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
 function buildDiarySheet(
-  ws: ExcelJS.Worksheet,
-  year: number,
-  month: number,
-  employeeName: string,
-  workingDays: number[],
-  supervisor: string,
-  seed: number,
+  ws: ExcelJS.Worksheet, year: number, month: number,
+  employeeName: string, workingDays: number[], supervisor: string, seed: number,
 ) {
-  // ヘッダー
-  ws.mergeCells("A1:H1");
-  ws.getCell("A1").value = "技能実習日誌";
-  ws.getCell("A1").font = { bold: true, size: 14 };
-  ws.getCell("A1").alignment = { horizontal: "center" };
+  // ── 行高さ
+  ws.getRow(1).height = 10.5;
+  ws.getRow(2).height = 12.75;
+  ws.getRow(5).height = 12.75;
+  ws.getRow(6).height = 15.0;
+  ws.getRow(7).height = 12.75;
+  ws.getRow(8).height = 16.5;
+  for (let r = 9; r <= 47; r++) ws.getRow(r).height = 17.25;
 
-  ws.getCell("D5").value = `（　　　${year}　　年　　${month}　　月分）`;
-  ws.getCell("E6").value = `　　　　　　氏名　${employeeName}`;
+  // ── 列幅
+  ws.getColumn("A").width = 10.4;
+  ws.getColumn("B").width = 12.0;
+  ws.getColumn("C").width = 6.9;
+  ws.getColumn("D").width = 6.0;
+  ws.getColumn("E").width = 10.6;
+  ws.getColumn("F").width = 9.0;
+  ws.getColumn("G").width = 15.4;
+  ws.getColumn("H").width = 12.0;
+  ws.getColumn("I").width = 6.0;
+  ws.getColumn("J").width = 28.0;
+  ws.getColumn("K").width = 6.9;
+  ws.getColumn("L").width = 6.0;
 
-  // 列ヘッダー（行8）
-  const colHeaders = ["年月日", "業務内容", "", "番号", "指導内容", "", "", "確認欄"];
-  ws.getRow(8).values = ["", ...colHeaders];
-  ws.getRow(8).font = { bold: true };
-  ws.getRow(8).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
+  // ── ヘッダー行 1-2
+  setCell(ws, "A1", "参考様式第4－2号別紙(規則第22号第1項第3号関係)", { size: 8 });
+  setCell(ws, "H1", "(日本工業規格A列4）", { size: 8 });
+  setCell(ws, "A2", "A・B・C・D・E・F", { size: 8 });
 
-  // 番号シーケンスを生成
+  // ── タイトル行4
+  ws.mergeCells("C4:G4");
+  setCell(ws, "C4", "　　　技　　能　　実　　習　　日　　誌", { size: 14, bold: true, hAlign: "center" });
+
+  // ── 年月・氏名 行5-6
+  ws.mergeCells("D5:F5");
+  setCell(ws, "D5", `（　　　${year}　　年　　${month}　　月分）`, { size: 8, hAlign: "center" });
+
+  ws.mergeCells("E6:G6");
+  setCell(ws, "E6", `　　　　　　氏名　${employeeName}`, { size: 8, hAlign: "left", bottomBorder: true });
+
+  // ── 行7 注意書き
+  setCell(ws, "A7", "(対象:別紙｢技能実習生一覧表｣のとおり)", { size: 8 });
+
+  // ── 行8 列ヘッダー
+  setCell(ws, "A8", "日付", { size: 9, hAlign: "center", border: true });
+  ws.mergeCells("B8:D8");
+  setCell(ws, "B8", "技能実習生に従事させた業務", { size: 9, hAlign: "center", border: true });
+  ws.mergeCells("E8:G8");
+  setCell(ws, "E8", "技能実習生に対する指導の内容", { size: 9, hAlign: "center", border: true });
+  setCell(ws, "H8", "指導者氏名", { size: 10, hAlign: "center", border: true });
+  setCell(ws, "J8", "従事させた業務", { size: 9, hAlign: "center" });
+
+  // ── 番号シーケンス生成
   const alloc = allocateDays(workingDays.length, month);
   const numSeq: number[] = [];
-  for (const [num, cnt] of Object.entries(alloc)) numSeq.push(...Array(cnt).fill(Number(num)));
+  for (const [num, cnt] of Object.entries(alloc)) numSeq.push(...Array(Number(cnt)).fill(Number(num)));
   shuffleNoTriple(numSeq, seed);
 
-  const workIdx: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  const workIdx: Record<number, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0};
   const totalDays = daysInMonth(year, month);
 
+  // ── 日別行 (行9〜39)
   for (let day = 1; day <= 31; day++) {
-    const row = 8 + day; // day1 → row9
-    if (day > totalDays) {
-      ws.getRow(row).values = [];
-      continue;
-    }
+    const rowNum = 8 + day;
+    if (day > totalDays) continue;
 
-    const dateVal = new Date(year, month - 1, day);
-    const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}`;
+    const dateObj = new Date(year, month - 1, day);
+    const aCell = ws.getRow(rowNum).getCell("A");
+    aCell.value = dateObj;
+    aCell.numFmt = "m/d";
+    aCell.font = { name: FONT_NAME, size: 10 };
+    aCell.alignment = { horizontal: "center", vertical: "center" };
+    aCell.border = thinBorder();
+
+    // B:C 結合
+    ws.mergeCells(`B${rowNum}:C${rowNum}`);
+    // E:G 結合
+    ws.mergeCells(`E${rowNum}:G${rowNum}`);
 
     if (workingDays.includes(day)) {
       const seqIdx = workingDays.indexOf(day);
@@ -182,32 +279,30 @@ function buildDiarySheet(
       const shidou = shidouList[workIdx[num] % Math.max(shidouList.length, 1)];
       workIdx[num]++;
 
-      ws.getRow(row).values = ["", dateStr, wname, "", num, shidou, "", "", supervisor];
+      setCell(ws, `B${rowNum}`, wname, { size: 6, hAlign: "center", wrap: true, border: true });
+      setCell(ws, `D${rowNum}`, num, { size: 9, hAlign: "center", border: true });
+      setCell(ws, `E${rowNum}`, shidou, { size: 9, hAlign: "center", border: true });
+      setCell(ws, `H${rowNum}`, supervisor, { size: 9, hAlign: "center", border: true });
     } else {
-      ws.getRow(row).values = ["", dateStr, "休み", "", "", "", "", "", ""];
-    }
-
-    // 罫線
-    for (let c = 2; c <= 9; c++) {
-      ws.getRow(row).getCell(c).border = {
-        top: { style: "thin" }, bottom: { style: "thin" },
-        left: { style: "thin" }, right: { style: "thin" },
-      };
+      setCell(ws, `B${rowNum}`, "休み", { size: 6, hAlign: "center", border: true });
+      setCell(ws, `D${rowNum}`, null, { border: true });
+      setCell(ws, `E${rowNum}`, null, { border: true });
+      setCell(ws, `H${rowNum}`, null, { border: true });
     }
   }
 
-  // 列幅
-  ws.columns = [
-    { width: 2 },  // A
-    { width: 14 }, // B 年月日
-    { width: 30 }, // C 業務内容
-    { width: 4 },  // D
-    { width: 6 },  // E 番号
-    { width: 24 }, // F 指導内容
-    { width: 4 },  // G
-    { width: 4 },  // H
-    { width: 10 }, // I 確認欄
-  ];
+  // ── 注意書き (行40〜43)
+  const notesRow = 40;
+  setCell(ws, `A${notesRow}`, "(注意)", { size: 8 });
+  setCell(ws, `A${notesRow + 1}`, "　　　　1　技能実習の区分、技能実習の期間、技能実習生に行わせる業務等が異なる場合は、分けて作成すること。", { size: 8 });
+  setCell(ws, `A${notesRow + 2}`, "　　　　2　技能実習生に従事させた業務の欄の右欄は、技能実習計画の実習実施予定表(別記様式第1号第4面から第6面まで)", { size: 8 });
+  setCell(ws, `A${notesRow + 3}`, "　　　　　　の技能実習の内容欄の番号を記載すること。", { size: 8 });
+
+  // ── 右側参照テーブル
+  for (const [row, iVal, jVal] of REF_TABLE) {
+    if (iVal) setCell(ws, `I${row}`, iVal, { size: 8, hAlign: "center" });
+    if (jVal) setCell(ws, `J${row}`, jVal, { size: 8 });
+  }
 }
 
 // ─── DB から出勤データ取得 ──────────────────────────────────────
@@ -244,28 +339,26 @@ async function fetchAttendance(start: Date, end: Date) {
       )),
   ]);
 
-  // 従業員別・月別に出勤日をまとめる
   type EmpMonths = Map<string, { name: string; months: Map<string, Set<number>> }>;
   const empMap: EmpMonths = new Map();
 
   for (const r of rows) {
+    if (!isTrainee(r.employeeName)) continue;
     const jst = toJSTDate(r.clockInTime);
     const ym = `${jst.getUTCFullYear()}-${jst.getUTCMonth() + 1}`;
     const day = jst.getUTCDate();
-    const code = r.employeeCode;
-    if (!empMap.has(code)) empMap.set(code, { name: r.employeeName, months: new Map() });
-    const emp = empMap.get(code)!;
+    if (!empMap.has(r.employeeCode)) empMap.set(r.employeeCode, { name: r.employeeName, months: new Map() });
+    const emp = empMap.get(r.employeeCode)!;
     if (!emp.months.has(ym)) emp.months.set(ym, new Set());
     emp.months.get(ym)!.add(day);
   }
 
   for (const lr of leaveRows) {
-    if (lr.leaveType !== "paid_leave") continue;
+    if (!isTrainee(lr.employeeName) || lr.leaveType !== "paid_leave") continue;
     const [y, m, d] = lr.requestDate.split("-").map(Number);
     const ym = `${y}-${m}`;
-    const code = lr.employeeCode;
-    if (!empMap.has(code)) empMap.set(code, { name: lr.employeeName, months: new Map() });
-    const emp = empMap.get(code)!;
+    if (!empMap.has(lr.employeeCode)) empMap.set(lr.employeeCode, { name: lr.employeeName, months: new Map() });
+    const emp = empMap.get(lr.employeeCode)!;
     if (!emp.months.has(ym)) emp.months.set(ym, new Set());
     emp.months.get(ym)!.add(d);
   }
@@ -294,14 +387,14 @@ export async function handleDiaryExcelDownload(req: Request, res: Response): Pro
     const empMap = await fetchAttendance(start, end);
 
     if (empMap.size === 0) {
-      res.status(404).json({ error: "指定期間に出勤データがありません" });
+      res.status(404).json({ error: "指定期間に対象実習生のデータがありません" });
       return;
     }
 
     const wb = new ExcelJS.Workbook();
-    let seed = Date.now();
+    let seed = 12345;
 
-    for (const [code, emp] of empMap) {
+    for (const [, emp] of empMap) {
       for (const [ym, daySet] of emp.months) {
         const [year, month] = ym.split("-").map(Number);
         const workingDays = Array.from(daySet).sort((a, b) => a - b);
@@ -312,7 +405,7 @@ export async function handleDiaryExcelDownload(req: Request, res: Response): Pro
         const ws = wb.addWorksheet(sheetName);
 
         buildDiarySheet(ws, year, month, emp.name, workingDays, supervisor, seed++);
-        console.log(`[diary-excel] generated: ${sheetName} (${workingDays.length}日)`);
+        console.log(`[diary-excel] ${sheetName}: ${workingDays.length}日`);
       }
     }
 
