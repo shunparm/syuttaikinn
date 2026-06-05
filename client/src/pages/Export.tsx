@@ -93,7 +93,8 @@ export default function Export() {
       const res = await fetch(`/api/export/diary-excel?${params}`, { credentials: "include" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        toast.error(body.error ?? "Excel生成に失敗しました");
+        const msg = body.detail ? `${body.error ?? "Excel生成に失敗しました"}\n${body.detail}` : (body.error ?? "Excel生成に失敗しました");
+        toast.error(msg, { duration: 10000 });
         return;
       }
       const blob = await res.blob();

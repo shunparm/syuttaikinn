@@ -206,6 +206,11 @@ export async function handleDiaryExcelDownload(req: Request, res: Response): Pro
     await writeFile(tempCsv, "﻿" + csv, "utf-8");
     await copyFile(DIARY_TEMPLATE, tempXlsx);
 
+    console.log("[diary-excel] cwd:", process.cwd());
+    console.log("[diary-excel] RUN_PY:", RUN_PY);
+    console.log("[diary-excel] template:", DIARY_TEMPLATE);
+    console.log("[diary-excel] tempCsv:", tempCsv);
+
     const log = await runPython([RUN_PY, tempCsv, "--excel", tempXlsx, "--supervisor", supervisor]);
     console.log("[diary-excel]", log.trim());
 
@@ -214,9 +219,10 @@ export async function handleDiaryExcelDownload(req: Request, res: Response): Pro
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.send(buf);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[diary-excel]", err);
-    if (!res.headersSent) res.status(500).json({ error: "Excel生成に失敗しました" });
+    const detail = err?.message ?? String(err);
+    if (!res.headersSent) res.status(500).json({ error: "Excel生成に失敗しました", detail });
   } finally {
     await unlink(tempCsv).catch(() => {});
     await unlink(tempXlsx).catch(() => {});
