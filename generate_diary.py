@@ -127,7 +127,7 @@ def write_step4(ws, year: int, month: int, working_days: list,
                 alloc: dict, num_seq: list, work_idx: dict):
     """★日誌自動生成のSTEP4振り分け表（行27〜57）に結果を書き込む。"""
     days_in_month = calendar.monthrange(year, month)[1]
-    OUTPUT_ROW = 27
+    OUTPUT_ROW = 19
 
     for day in range(1, 32):
         row = OUTPUT_ROW + day - 1
@@ -183,7 +183,7 @@ def transfer_to_diary(wb, ws_auto, year: int, month: int, supervisor: str,
         return
 
     days_in_month = calendar.monthrange(year, month)[1]
-    OUTPUT_ROW = 27
+    OUTPUT_ROW = 19
     DIARY_ROW = 9
 
     transferred = 0
