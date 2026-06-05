@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, Users, Clock, Calendar } from "lucide-react";
+import { Download, FileSpreadsheet, Users, Clock, Calendar, BookOpen } from "lucide-react";
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   paid_leave: "有給休暇",
@@ -36,6 +36,8 @@ export default function Export() {
   const [startDate, setStartDate] = useState(firstOfMonthJSTStr);
   const [endDate, setEndDate] = useState(todayJSTStr);
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>("all");
+  const [supervisor, setSupervisor] = useState("中原");
+  const [diaryLoading, setDiaryLoading] = useState(false);
   const [queryParams, setQueryParams] = useState({
     startDate: new Date(firstOfMonthJSTStr + "T00:00:00+09:00"),
     endDate:   new Date(todayJSTStr + "T23:59:59+09:00"),
@@ -87,6 +89,37 @@ export default function Export() {
     toast.success("CSVをダウンロードしました");
   };
 
+  const handleDiaryDownload = async () => {
+    setDiaryLoading(true);
+    try {
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+        supervisor,
+      });
+      const res = await fetch(`/api/export/diary-excel?${params}`, { credentials: "include" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error ?? "Excel生成に失敗しました");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `技能実習日誌_${startDate}_${endDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("技能実習日誌Excelをダウンロードしました");
+    } catch {
+      toast.error("ダウンロードに失敗しました");
+    } finally {
+      setDiaryLoading(false);
+    }
+  };
+
   const hasData = (exportData?.rows.length ?? 0) > 0 || (exportData?.leaveRows.length ?? 0) > 0;
 
   return (
@@ -101,6 +134,78 @@ export default function Export() {
           期間・作業員を指定して出退勤データをCSV形式でエクスポートします
         </p>
       </div>
+
+      {/* 技能実習日誌 生成 */}
+      <Card className="border-0 shadow-sm border-l-4 border-l-primary">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            技能実習日誌 Excel生成
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            指定期間の出勤データをもとに、実習生全員分の技能実習日誌をExcelで自動生成します。
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                開始日
+              </Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                終了日
+              </Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                指導員名
+              </Label>
+              <Input
+                value={supervisor}
+                onChange={(e) => setSupervisor(e.target.value)}
+                placeholder="中原"
+                className="h-10"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                onClick={handleDiaryDownload}
+                disabled={diaryLoading}
+                className="w-full gap-2"
+              >
+                {diaryLoading ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    日誌Excelをダウンロード
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 条件設定 */}
       <Card className="border-0 shadow-sm">

@@ -8,6 +8,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { initDb } from "../db";
 import { startNotificationScheduler } from "../notificationScheduler";
+import { handleDiaryExcelDownload } from "../routes/diaryExcel";
 
 async function startServer() {
   // DB初期化（テーブル作成）
@@ -47,6 +48,9 @@ async function startServer() {
       publicKeyPrefix: pub ? pub.substring(0, 10) + "..." : null,
     });
   });
+
+  // 日誌Excel生成ダウンロード
+  app.get("/api/export/diary-excel", handleDiaryExcelDownload);
 
   // tRPC API
   app.use(
