@@ -104,6 +104,14 @@ export async function initDb() {
         "userId" TEXT,
         "createdAt" TEXT NOT NULL DEFAULT now()::text
       );
+      ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS "employeeId" INTEGER REFERENCES employee_master(id);
+      CREATE TABLE IF NOT EXISTS employee_link_tokens (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        "employeeId" INTEGER NOT NULL REFERENCES employee_master(id),
+        "expiresAt" TEXT NOT NULL,
+        "createdAt" TEXT NOT NULL DEFAULT now()::text
+      );
       DO $$
       BEGIN
         IF NOT EXISTS (

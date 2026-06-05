@@ -1,16 +1,18 @@
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { usePushNotification } from "@/hooks/usePushNotification";
-import { Bell, BellOff, Clock, Send } from "lucide-react";
+import { Bell, BellOff, Clock, Link, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function NotificationSettings() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const { permission, isSubscribed, isLoading, vapidLoading, vapidError, vapidData, error, subscribe, unsubscribe } = usePushNotification();
+  const { permission, isSubscribed, isLoading, vapidLoading, vapidError, vapidData, error, subscribe, unsubscribe, subscriptionEndpoint } = usePushNotification();
+  const [linkCode, setLinkCode] = useState("");
 
   const { data: config, refetch } = trpc.push.getConfig.useQuery();
   const updateConfigMutation = trpc.push.updateConfig.useMutation({
@@ -20,6 +22,14 @@ export default function NotificationSettings() {
   const sendTestMutation = trpc.push.sendTest.useMutation({
     onSuccess: () => toast.success("テスト通知を送信しました"),
     onError: (e) => toast.error(`送信失敗: ${e.message}`),
+  });
+
+  const redeemLinkTokenMutation = trpc.push.redeemLinkToken.useMutation({
+    onSuccess: () => {
+      setLinkCode("");
+      toast.success("端末の紐付けが完了しました！管理者から催促通知を受け取れます。");
+    },
+    onError: (e) => toast.error(e.message),
   });
 
   const [clockInTime, setClockInTime] = useState("08:00");
@@ -104,6 +114,43 @@ export default function NotificationSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 作業員向け：端末紐付けコード入力 */}
+      {isSubscribed && subscriptionEndpoint && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Link className="h-4 w-4" />
+              作業員の端末登録
+            </CardTitle>
+            <CardDescription>
+              管理者から受け取った4桁のコードを入力すると、この端末に催促通知を送れるようになります
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="0000"
+                value={linkCode}
+                onChange={(e) => setLinkCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                className="text-center text-lg tracking-widest font-mono w-28"
+              />
+              <Button
+                onClick={() => {
+                  if (!subscriptionEndpoint) return;
+                  redeemLinkTokenMutation.mutate({ token: linkCode, endpoint: subscriptionEndpoint });
+                }}
+                disabled={linkCode.length !== 4 || redeemLinkTokenMutation.isPending}
+              >
+                {redeemLinkTokenMutation.isPending ? "登録中..." : "登録する"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 通知時刻の表示（全ユーザー）・編集（管理者のみ） */}
       <Card className="border-0 shadow-sm">

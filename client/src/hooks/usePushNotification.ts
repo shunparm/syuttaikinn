@@ -17,6 +17,7 @@ export function usePushNotification() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [subscriptionEndpoint, setSubscriptionEndpoint] = useState<string | null>(null);
 
   const {
     data: vapidData,
@@ -39,6 +40,7 @@ export function usePushNotification() {
     navigator.serviceWorker.ready.then(reg => {
       reg.pushManager.getSubscription().then(sub => {
         setIsSubscribed(sub !== null);
+        setSubscriptionEndpoint(sub?.endpoint ?? null);
       });
     });
   }, []);
@@ -85,6 +87,7 @@ export function usePushNotification() {
         keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
       });
       setIsSubscribed(true);
+      setSubscriptionEndpoint(json.endpoint);
     } catch (e) {
       setError(`通知の設定に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -104,10 +107,11 @@ export function usePushNotification() {
       await unsubscribeMutation.mutateAsync({ endpoint: sub.endpoint });
       await sub.unsubscribe();
       setIsSubscribed(false);
+      setSubscriptionEndpoint(null);
     } finally {
       setIsLoading(false);
     }
   }, [unsubscribeMutation]);
 
-  return { permission, isSubscribed, isLoading, vapidLoading, vapidError, vapidData, vapidReady, error, subscribe, unsubscribe };
+  return { permission, isSubscribed, isLoading, vapidLoading, vapidError, vapidData, vapidReady, error, subscribe, unsubscribe, subscriptionEndpoint };
 }

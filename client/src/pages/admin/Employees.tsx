@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Users, Plus, Pencil, Shield, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users, Plus, Pencil, Shield, Trash2, Bell, LogIn, LogOut } from "lucide-react";
 
 const PAGE_SIZE = 10;
 import { useLocation } from "wouter";
@@ -54,7 +54,18 @@ export default function AdminEmployees() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
 
+  // 通知コード発行ダイアログ用
+  const [linkTokenDialog, setLinkTokenDialog] = useState<{
+    open: boolean; employeeId: number; employeeName: string; token: string | null; expiresAt: string | null;
+  } | null>(null);
+
+  // 催促通知ダイアログ用（作業員）
+  const [empNotifyDialog, setEmpNotifyDialog] = useState<{
+    open: boolean; employeeId: number; employeeName: string; type: "clock-in" | "clock-out" | null;
+  } | null>(null);
+
   const { data: employees, refetch } = trpc.master.listEmployees.useQuery({ includeInactive: false });
+  const { data: linkedEmployeeIds = [] } = trpc.push.getEmployeesWithSubscriptions.useQuery();
 
   const createMutation = trpc.master.createEmployee.useMutation({
     onSuccess: () => {
@@ -84,6 +95,25 @@ export default function AdminEmployees() {
       refetch();
     },
     onError: (err) => toast.error(err.message || "削除に失敗しました"),
+  });
+
+  const generateLinkTokenMutation = trpc.push.generateLinkToken.useMutation({
+    onSuccess: (data) => {
+      setLinkTokenDialog(d => d ? { ...d, token: data.token, expiresAt: data.expiresAt } : d);
+    },
+    onError: (err) => toast.error(err.message || "コードの発行に失敗しました"),
+  });
+
+  const sendToEmployeeMutation = trpc.push.sendToEmployee.useMutation({
+    onSuccess: (data) => {
+      setEmpNotifyDialog(null);
+      if (data.sent > 0) {
+        toast.success("催促通知を送信しました");
+      } else {
+        toast.error("送信できる端末が見つかりませんでした");
+      }
+    },
+    onError: (e) => toast.error(`送信失敗: ${e.message}`),
   });
 
   if (user?.role !== "admin") {
@@ -244,6 +274,30 @@ export default function AdminEmployees() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {linkedEmployeeIds.includes(emp.id) ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEmpNotifyDialog({ open: true, employeeId: emp.id, employeeName: emp.name, type: null })}
+                              className="h-8 gap-1.5 text-xs text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+                            >
+                              <Bell className="h-3.5 w-3.5" />
+                              催促
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setLinkTokenDialog({ open: true, employeeId: emp.id, employeeName: emp.name, token: null, expiresAt: null });
+                                generateLinkTokenMutation.mutate({ employeeId: emp.id });
+                              }}
+                              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              <Bell className="h-3.5 w-3.5" />
+                              通知登録
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -375,6 +429,97 @@ export default function AdminEmployees() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 通知登録コード発行ダイアログ */}
+      {linkTokenDialog && (
+        <Dialog open={linkTokenDialog.open} onOpenChange={(open) => { if (!open) setLinkTokenDialog(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-sky-500" />
+                通知登録コード
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">{linkTokenDialog.employeeName}</span> さんの端末に通知を紐付けるコードです。
+              </p>
+              <div className="flex items-center justify-center py-4">
+                {linkTokenDialog.token ? (
+                  <span className="text-5xl font-bold tracking-[0.3em] text-sky-600">
+                    {linkTokenDialog.token}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-sm">発行中...</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                このコードを作業員に口頭で伝えてください。<br />
+                作業員は「通知設定」ページで入力します。有効期限は30分です。
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setLinkTokenDialog(null)}>閉じる</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 作業員催促通知ダイアログ */}
+      {empNotifyDialog && (
+        <Dialog open={empNotifyDialog.open} onOpenChange={(open) => { if (!open) setEmpNotifyDialog(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-sky-500" />
+                打刻催促通知を送る
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">{empNotifyDialog.employeeName}</span> さんに送る催促の種類を選んでください。
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setEmpNotifyDialog(d => d ? { ...d, type: "clock-in" } : d)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                    empNotifyDialog.type === "clock-in"
+                      ? "border-sky-500 bg-sky-50 text-sky-700"
+                      : "border-border hover:border-sky-300 hover:bg-sky-50/50"
+                  }`}
+                >
+                  <LogIn className="h-6 w-6" />
+                  <span className="text-sm font-medium">出勤催促</span>
+                </button>
+                <button
+                  onClick={() => setEmpNotifyDialog(d => d ? { ...d, type: "clock-out" } : d)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                    empNotifyDialog.type === "clock-out"
+                      ? "border-red-500 bg-red-50 text-red-700"
+                      : "border-border hover:border-red-300 hover:bg-red-50/50"
+                  }`}
+                >
+                  <LogOut className="h-6 w-6" />
+                  <span className="text-sm font-medium">退勤催促</span>
+                </button>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setEmpNotifyDialog(null)}>キャンセル</Button>
+              <Button
+                onClick={() => {
+                  if (!empNotifyDialog.type) return;
+                  sendToEmployeeMutation.mutate({ employeeId: empNotifyDialog.employeeId, type: empNotifyDialog.type });
+                }}
+                disabled={!empNotifyDialog.type || sendToEmployeeMutation.isPending}
+                className="bg-sky-600 hover:bg-sky-700 text-white"
+              >
+                {sendToEmployeeMutation.isPending ? "送信中..." : "送信する"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* 削除確認ダイアログ */}
       <Dialog open={deleteConfirmOpen} onOpenChange={(open) => { setDeleteConfirmOpen(open); if (!open) setDeleteTarget(null); }}>
