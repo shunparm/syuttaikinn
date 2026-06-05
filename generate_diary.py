@@ -12,7 +12,6 @@
 """
 
 import calendar
-import datetime
 import math
 import random
 import sys
@@ -69,9 +68,6 @@ NUM_TO_WORKS = {
         ("安全衛生業務", ["安全訓練", "倉庫整理", "現場内清掃", "安全管理", "安全確認"]),
     ],
 }
-
-WEEKDAY_JP = ["月", "火", "水", "木", "金", "土", "日"]
-
 
 def allocate_days(n_days: int, month: int) -> dict:
     reqs = MONTHLY_REQUIRED[month]
@@ -135,16 +131,14 @@ def write_step4(ws, year: int, month: int, working_days: list,
 
     for day in range(1, 32):
         row = OUTPUT_ROW + day - 1
-        d = datetime.date(year, month, day) if day <= days_in_month else None
 
         if day > days_in_month:
-            ws.cell(row=row, column=3).value = None
             ws.cell(row=row, column=4).value = None
             ws.cell(row=row, column=10).value = None
             ws.cell(row=row, column=11).value = None
             continue
 
-        ws.cell(row=row, column=2).value = WEEKDAY_JP[d.weekday()]  # B: 曜日
+        # B列(曜日)・C列(出/休)はExcelの数式で自動計算されるため書き込まない
 
         if day in working_days:
             seq_idx = working_days.index(day)
@@ -155,19 +149,22 @@ def write_step4(ws, year: int, month: int, working_days: list,
             shidou = shidou_list[work_idx[num] % len(shidou_list)]
             work_idx[num] += 1
 
-            ws.cell(row=row, column=3).value = "出"
             ws.cell(row=row, column=4).value = num
             ws.cell(row=row, column=10).value = wname
             ws.cell(row=row, column=11).value = shidou
         else:
-            ws.cell(row=row, column=3).value = "休"
             ws.cell(row=row, column=4).value = None
             ws.cell(row=row, column=10).value = None
             ws.cell(row=row, column=11).value = None
 
 
-def transfer_to_diary(wb, ws_auto, year: int, month: int, supervisor: str):
-    """★日誌自動生成のSTEP4データを対象月の日誌シートへ転記する。"""
+def transfer_to_diary(wb, ws_auto, year: int, month: int, supervisor: str,
+                      working_days: list):
+    """★日誌自動生成のSTEP4データを対象月の日誌シートへ転記する。
+
+    出勤判定は月次入力シートから取得した working_days を使う
+    （STEP4 C列はExcel数式のためopenpyxlでは評価値を読めないため）。
+    """
     candidates = [
         f"{year}.{month}",
         f"{year}.{month} ",
@@ -194,12 +191,12 @@ def transfer_to_diary(wb, ws_auto, year: int, month: int, supervisor: str):
         src_row = OUTPUT_ROW + day - 1
         dst_row = DIARY_ROW + day - 1
 
-        attendance = ws_auto.cell(row=src_row, column=3).value
-        num        = ws_auto.cell(row=src_row, column=4).value
-        wname      = ws_auto.cell(row=src_row, column=10).value
-        shidou     = ws_auto.cell(row=src_row, column=11).value
+        # C列は数式のためopenpyxlで読めない → 月次入力の working_days で出勤判定
+        num    = ws_auto.cell(row=src_row, column=4).value
+        wname  = ws_auto.cell(row=src_row, column=10).value
+        shidou = ws_auto.cell(row=src_row, column=11).value
 
-        if attendance == "出" and num is not None:
+        if day in working_days and num is not None:
             ws_diary.cell(row=dst_row, column=2).value = wname
             ws_diary.cell(row=dst_row, column=4).value = num
             ws_diary.cell(row=dst_row, column=5).value = shidou
@@ -290,7 +287,7 @@ def main():
     write_step4(ws_auto, year, month, working_days, alloc, num_seq, work_idx)
 
     if do_transfer:
-        transfer_to_diary(wb, ws_auto, year, month, supervisor)
+        transfer_to_diary(wb, ws_auto, year, month, supervisor, working_days)
 
     wb.save(excel_path)
     print(f"\n書き込み完了: {excel_path}")
