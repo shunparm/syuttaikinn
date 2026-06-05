@@ -7,6 +7,7 @@
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "cross-env NODE_ENV=production vite build && cross-env NODE_ENV=production esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "cross-env NODE_ENV=production node dist/index.js",
+    "postinstall": "python3 -m pip install openpyxl --user --quiet 2>/dev/null || true",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
