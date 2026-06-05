@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, Users, Clock, Calendar, BookOpen } from "lucide-react";
+import { Download, FileSpreadsheet, Users, Clock, Calendar, BookOpen, Calculator } from "lucide-react";
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   paid_leave: "有給休暇",
@@ -111,6 +111,23 @@ export default function Export() {
     } finally {
       setDiaryLoading(false);
     }
+  };
+
+  const handlePayrollDownload = () => {
+    if (!payrollCsvData?.csv) {
+      toast.error("ダウンロードするデータがありません");
+      return;
+    }
+    const blob = new Blob([payrollCsvData.csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `給与計算用_${startDate}_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("給与計算用CSVをダウンロードしました");
   };
 
   const hasData = (exportData?.rows.length ?? 0) > 0 || (exportData?.leaveRows.length ?? 0) > 0;
