@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";
-import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
+import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { leaveRequests, employeeMaster } from "../../drizzle/schema";
 
@@ -69,7 +69,7 @@ export const leaveRequestRouter = router({
     }),
 
   // 管理者: 全申請一覧
-  listAll: protectedProcedure.query(async () => {
+  listAll: adminProcedure.query(async () => {
     const db = getDb();
     return db
       .select({
@@ -80,6 +80,7 @@ export const leaveRequestRouter = router({
         reason: leaveRequests.reason,
         status: leaveRequests.status,
         approvedBy: leaveRequests.approvedBy,
+        approvedByName: leaveRequests.approvedByName,
         approvedAt: leaveRequests.approvedAt,
         note: leaveRequests.note,
         createdAt: leaveRequests.createdAt,
@@ -93,7 +94,7 @@ export const leaveRequestRouter = router({
   }),
 
   // 管理者: 承認
-  approve: protectedProcedure
+  approve: adminProcedure
     .input(z.object({ id: z.number(), note: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
@@ -110,6 +111,7 @@ export const leaveRequestRouter = router({
         .set({
           status: "approved",
           approvedBy: ctx.user.id,
+          approvedByName: ctx.user.name ?? null,
           approvedAt: now,
           note: input.note ?? null,
           updatedAt: now,
@@ -119,7 +121,7 @@ export const leaveRequestRouter = router({
     }),
 
   // 管理者: 却下
-  reject: protectedProcedure
+  reject: adminProcedure
     .input(z.object({ id: z.number(), note: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
@@ -136,6 +138,7 @@ export const leaveRequestRouter = router({
         .set({
           status: "rejected",
           approvedBy: ctx.user.id,
+          approvedByName: ctx.user.name ?? null,
           approvedAt: now,
           note: input.note ?? null,
           updatedAt: now,
@@ -145,7 +148,7 @@ export const leaveRequestRouter = router({
     }),
 
   // 管理者: 処理済み申請の削除
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = getDb();

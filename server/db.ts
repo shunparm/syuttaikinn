@@ -45,6 +45,12 @@ export async function initDb() {
       ALTER TABLE employee_master DROP CONSTRAINT IF EXISTS employee_master_role_check;
       ALTER TABLE employee_master ADD CONSTRAINT employee_master_role_check CHECK(role IN ('worker', 'staff', 'admin', '応援'));
       ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "nameKana" TEXT;
+      ALTER TABLE employee_master DROP COLUMN IF EXISTS pin;
+      ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "passwordHash" TEXT;
+      ALTER TABLE correction_requests ADD COLUMN IF NOT EXISTS "approvedByName" TEXT;
+      ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_approvedBy_fkey;
+      ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS "approvedByName" TEXT;
+      ALTER TABLE leave_requests DROP CONSTRAINT IF EXISTS leave_requests_approvedBy_fkey;
       ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
       ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('user', 'admin', 'staff'));
       CREATE TABLE IF NOT EXISTS site_master (
@@ -90,9 +96,6 @@ export async function initDb() {
       ALTER TABLE correction_requests ALTER COLUMN "newClockInTime" DROP NOT NULL;
       ALTER TABLE correction_requests ALTER COLUMN "newClockOutTime" DROP NOT NULL;
       ALTER TABLE correction_requests ALTER COLUMN "newSiteId" DROP NOT NULL;
-      ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS correction_requests_correctiontype_check;
-      ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'));
-      ALTER TABLE correction_requests ALTER COLUMN "attendanceRecordId" DROP NOT NULL;
       CREATE TABLE IF NOT EXISTS push_subscriptions (
         id SERIAL PRIMARY KEY,
         endpoint TEXT NOT NULL UNIQUE,
@@ -147,6 +150,36 @@ export async function initDb() {
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
     `);
+
+    // 給与IDを一元化したため不要になったカラムを削除
+    try { await client.query(`ALTER TABLE employee_master DROP COLUMN IF EXISTS "payrollId"`); } catch {}
+    try { await client.query(`ALTER TABLE site_master DROP COLUMN IF EXISTS "payrollCode"`); } catch {}
+
+    // new_record型対応マイグレーション（個別実行で確実に適用）
+    try {
+      await client.query(`ALTER TABLE correction_requests ALTER COLUMN "attendanceRecordId" DROP NOT NULL`);
+    } catch (e: any) { console.log('initDb DROP NOT NULL (skip):', e.message); }
+    try {
+      // 制約名の大文字小文字に関わらず全て削除して再作成
+      await client.query(`
+        DO $$
+        DECLARE r RECORD;
+        BEGIN
+          FOR r IN
+            SELECT conname FROM pg_constraint
+            WHERE conrelid = 'correction_requests'::regclass
+              AND contype = 'c'
+              AND pg_get_constraintdef(oid) LIKE '%correctionType%'
+          LOOP
+            EXECUTE 'ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS "' || r.conname || '"';
+          END LOOP;
+        END $$
+      `);
+      await client.query(`
+        ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check
+        CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'))
+      `);
+    } catch (e: any) { console.log('initDb CHECK constraint (skip):', e.message); }
   } finally {
     client.release();
   }

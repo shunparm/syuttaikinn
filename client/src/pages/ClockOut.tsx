@@ -306,12 +306,13 @@ export default function ClockOut() {
                   作業日報 <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
-                  placeholder="本日の作業内容を入力してください（必須）"
+                  placeholder={"作業内容を入力してください（必須）\n例：〇〇現場にて配管工事。午前中は掘削作業、午後は埋め戻し。"}
                   value={workReport}
                   onChange={(e) => { setWorkReport(e.target.value); if (reportError) setReportError(""); }}
                   rows={4}
                   className="resize-none"
                 />
+                <p className="text-xs text-muted-foreground">作業した場所・内容を簡単に記入してください</p>
                 {reportError && (
                   <p className="text-sm text-red-500">{reportError}</p>
                 )}

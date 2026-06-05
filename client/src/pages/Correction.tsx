@@ -26,6 +26,14 @@ const correctionTypeLabels = {
   new_record: "記録の追加（打刻忘れ）",
 };
 
+const correctionTypeDescriptions: Record<string, string> = {
+  time_correction: "出勤・退勤の時刻が間違っている時に使います。例：9:15に出勤したのに9:00と記録されている",
+  cancel: "その記録自体を削除したい時に使います。例：誤って出勤ボタンを押してしまった",
+  site_change: "記録された現場が間違っている時に使います。例：A現場で記録されているがB現場が正しい",
+  new_record: "出勤と退勤の両方を打刻し忘れた時に使います。後からまとめて1日分の記録を追加します",
+  other: "上記に当てはまらない修正がある時に使います。理由欄に詳しく記入してください",
+};
+
 function formatTime(date: Date | string | null) {
   if (!date) return "―";
   return new Date(date).toLocaleTimeString("ja-JP", {
@@ -59,6 +67,8 @@ export default function Correction() {
   const [newClockOutTimeStr, setNewClockOutTimeStr] = useState("");
   const [newSiteId, setNewSiteId] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [pendingPage, setPendingPage] = useState(1);
+  const PENDING_PAGE_SIZE = 10;
 
   useEffect(() => {
     if (sessionStorage.getItem("correctionSuccess")) {
@@ -327,15 +337,19 @@ export default function Correction() {
                     <SelectItem value="time_correction">{t("出勤・退勤時刻の修正", "Koreksi waktu masuk/pulang")}</SelectItem>
                     <SelectItem value="cancel">{t("記録のキャンセル", "Batalkan catatan")}</SelectItem>
                     <SelectItem value="site_change">現場の変更</SelectItem>
-                    <SelectItem value="other">その他</SelectItem>
                     <SelectItem value="new_record">
                       <span className="flex items-center gap-1.5">
                         <PlusCircle className="h-3.5 w-3.5 text-emerald-600" />
                         {t("記録の追加（出勤・退勤ともに打刻忘れ）", "Tambah catatan (lupa absen masuk & pulang)")}
                       </span>
                     </SelectItem>
+                    <SelectItem value="other">その他</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="flex items-start gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>{correctionTypeDescriptions[correctionType]}</span>
+                </div>
               </div>
 
               {/* 対象記録選択（new_record 以外のみ表示） */}
@@ -546,7 +560,7 @@ export default function Correction() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border/50">
-              {myRequests.map((req) => (
+              {myRequests.slice((pendingPage - 1) * PENDING_PAGE_SIZE, pendingPage * PENDING_PAGE_SIZE).map((req) => (
                 <div key={req.id} className="px-6 py-4 hover:bg-muted/20 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5 flex-1 min-w-0">
@@ -592,6 +606,24 @@ export default function Correction() {
                 </div>
               ))}
             </div>
+            {Math.ceil(myRequests.length / PENDING_PAGE_SIZE) > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+                <span className="text-xs text-muted-foreground">
+                  {(pendingPage - 1) * PENDING_PAGE_SIZE + 1}–{Math.min(pendingPage * PENDING_PAGE_SIZE, myRequests.length)} / {myRequests.length}件
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                    onClick={() => setPendingPage(p => Math.max(1, p - 1))} disabled={pendingPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs px-2 tabular-nums">{pendingPage} / {Math.ceil(myRequests.length / PENDING_PAGE_SIZE)}</span>
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                    onClick={() => setPendingPage(p => Math.min(Math.ceil(myRequests.length / PENDING_PAGE_SIZE), p + 1))} disabled={pendingPage === Math.ceil(myRequests.length / PENDING_PAGE_SIZE)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

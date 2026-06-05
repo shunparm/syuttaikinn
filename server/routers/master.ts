@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { employeeMaster, siteMaster } from "../../drizzle/schema";
+import { hashPassword } from "../utils/password";
 
 export const masterRouter = router({
   listEmployees: publicProcedure
@@ -20,13 +21,15 @@ export const masterRouter = router({
       employeeId: z.string().min(1).max(50),
       name: z.string().min(1).max(255),
       nameKana: z.string().optional(),
-      pin: z.string().max(6).optional(),
+      password: z.string().min(4).optional(),
       role: z.enum(["worker", "staff", "admin", "応援"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
       const now = new Date().toISOString();
+      const { password, ...rest } = input;
+      const passwordHash = password ? hashPassword(password) : undefined;
       // 論理削除済みの同じemployeeIdのレコードを検索
       const inactiveExisting = await db
         .select()
@@ -36,11 +39,11 @@ export const masterRouter = router({
       if (inactiveExisting.length > 0) {
         // 復活（UPDATE）
         await db.update(employeeMaster)
-          .set({ name: input.name, nameKana: input.nameKana, pin: input.pin, role: input.role, status: "active", updatedAt: now })
+          .set({ name: rest.name, nameKana: rest.nameKana, role: rest.role, status: "active", ...(passwordHash ? { passwordHash } : {}), updatedAt: now })
           .where(eq(employeeMaster.id, inactiveExisting[0].id));
       } else {
         // 通常INSERT
-        await db.insert(employeeMaster).values(input);
+        await db.insert(employeeMaster).values({ ...rest, ...(passwordHash ? { passwordHash } : {}) });
       }
       const rows = await db.select().from(employeeMaster).where(eq(employeeMaster.employeeId, input.employeeId)).limit(1);
       return rows[0];
@@ -52,7 +55,7 @@ export const masterRouter = router({
       employeeId: z.string().min(1).max(50).optional(),
       name: z.string().min(1).max(255).optional(),
       nameKana: z.string().optional(),
-      pin: z.string().max(6).optional(),
+      password: z.string().min(4).optional(),
       role: z.enum(["worker", "staff", "admin", "応援"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
     }))
@@ -68,8 +71,9 @@ export const masterRouter = router({
           throw new TRPCError({ code: "CONFLICT", message: "その作業員IDは既に使用されています" });
         }
       }
-      const { id, ...data } = input;
-      await db.update(employeeMaster).set(data).where(eq(employeeMaster.id, id));
+      const { id, password, ...rest } = input;
+      const passwordHash = password ? hashPassword(password) : undefined;
+      await db.update(employeeMaster).set({ ...rest, ...(passwordHash ? { passwordHash } : {}) }).where(eq(employeeMaster.id, id));
       const rows = await db.select().from(employeeMaster).where(eq(employeeMaster.id, id)).limit(1);
       return rows[0];
     }),

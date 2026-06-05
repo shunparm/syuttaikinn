@@ -6,7 +6,8 @@ import { SignJWT } from "jose";
 import { ENV } from "./env";
 import { getDb } from "../db";
 import { employeeMaster } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { verifyPassword } from "../utils/password";
 
 async function createSessionToken(openId: string, name: string): Promise<string> {
   const secretKey = new TextEncoder().encode(ENV.cookieSecret);
@@ -18,83 +19,73 @@ async function createSessionToken(openId: string, name: string): Promise<string>
 }
 
 export function registerAuthRoutes(app: Express) {
-  // 管理者ログイン: POST /api/auth/login { password }
+  // 管理者ログイン: POST /api/auth/login { employeeId, password }
+  // employeeId が空の場合は環境変数パスワードによる緊急スーパー管理者ログイン
   app.post("/api/auth/login", async (req: Request, res: Response) => {
-    const { password } = req.body ?? {};
+    const { employeeId, password } = req.body ?? {};
 
-    if (!password || password !== ENV.adminPassword) {
-      res.status(401).json({ error: "パスワードが正しくありません" });
+    if (!password) {
+      res.status(400).json({ error: "パスワードを入力してください" });
+      return;
+    }
+
+    // 社員IDが指定された場合: employee_master の管理者アカウントで認証
+    if (employeeId) {
+      const dbInstance = getDb();
+      const rows = await dbInstance
+        .select()
+        .from(employeeMaster)
+        .where(and(eq(employeeMaster.employeeId, employeeId), eq(employeeMaster.status, "active")))
+        .limit(1);
+
+      const employee = rows[0];
+
+      if (!employee || employee.role !== "admin") {
+        res.status(401).json({ error: "社員IDまたはパスワードが正しくありません" });
+        return;
+      }
+
+      if (!employee.passwordHash || !verifyPassword(password, employee.passwordHash)) {
+        res.status(401).json({ error: "社員IDまたはパスワードが正しくありません" });
+        return;
+      }
+
+      const openId = `admin-${employee.employeeId}`;
+      await db.upsertUser({
+        openId,
+        name: employee.name,
+        email: null,
+        loginMethod: "employee",
+        role: "admin",
+        lastSignedIn: new Date().toISOString(),
+      });
+
+      const sessionToken = await createSessionToken(openId, employee.name);
+      const cookieOptions = getSessionCookieOptions(req);
+      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.json({ success: true });
+      return;
+    }
+
+    // 社員IDなし: 環境変数パスワードによる緊急スーパー管理者ログイン
+    if (!ENV.adminPassword || password !== ENV.adminPassword) {
+      res.status(401).json({ error: "社員IDまたはパスワードが正しくありません" });
       return;
     }
 
     const openId = "local-admin";
-    const name = "管理者";
-
     await db.upsertUser({
       openId,
-      name,
+      name: "管理者",
       email: null,
       loginMethod: "local",
       role: "admin",
       lastSignedIn: new Date().toISOString(),
     });
 
-    const sessionToken = await createSessionToken(openId, name);
+    const sessionToken = await createSessionToken(openId, "管理者");
     const cookieOptions = getSessionCookieOptions(req);
     res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-    res.json({ success: true });
-  });
-
-  // 事務・スタッフログイン: POST /api/auth/login-staff { staffId, password }
-  app.post("/api/auth/login-staff", async (req: Request, res: Response) => {
-    const { staffId, password } = req.body ?? {};
-
-    if (!staffId || !password) {
-      res.status(400).json({ error: "社員IDとパスワードを入力してください" });
-      return;
-    }
-
-    const dbInstance = getDb();
-    const rows = await dbInstance
-      .select()
-      .from(employeeMaster)
-      .where(eq(employeeMaster.employeeId, staffId))
-      .limit(1);
-
-    const employee = rows[0];
-
-    if (!employee) {
-      res.status(401).json({ error: "社員IDまたはパスワードが正しくありません" });
-      return;
-    }
-
-    if (employee.pin !== password) {
-      res.status(401).json({ error: "社員IDまたはパスワードが正しくありません" });
-      return;
-    }
-
-    const empRole = (employee as any).role ?? "worker";
-    if (empRole !== "staff" && empRole !== "admin") {
-      res.status(403).json({ error: "このアカウントにはログイン権限がありません" });
-      return;
-    }
-
-    const openId = `staff-${employee.employeeId}`;
-
-    await db.upsertUser({
-      openId,
-      name: employee.name,
-      email: null,
-      loginMethod: "staff",
-      role: empRole === "admin" ? "admin" : "staff",
-      lastSignedIn: new Date().toISOString(),
-    });
-
-    const sessionToken = await createSessionToken(openId, employee.name);
-    const cookieOptions = getSessionCookieOptions(req);
-    res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
     res.json({ success: true });
   });
 

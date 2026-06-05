@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,14 +62,7 @@ export default function Export() {
     }
   };
   const { data: csvData, isLoading: csvLoading } = trpc.export.generateCsvString.useQuery(queryParams);
-
-  const handleSearch = () => {
-    setQueryParams({
-      startDate: new Date(startDate + "T00:00:00+09:00"),
-      endDate:   new Date(endDate   + "T23:59:59+09:00"),
-      employeeId: filterEmployeeId !== "all" ? Number(filterEmployeeId) : undefined,
-    });
-  };
+  const { data: payrollCsvData, isLoading: payrollCsvLoading } = trpc.export.generatePayrollCsvString.useQuery(queryParams);
 
   const handleDownload = () => {
     if (!csvData?.csv) {
@@ -258,19 +251,32 @@ export default function Export() {
               </Select>
             </div>
           </div>
-          <div className="flex gap-3 mt-4">
-            <Button onClick={handleSearch} variant="outline" size="sm">
-              集計を確認
-            </Button>
-            <Button
-              onClick={handleDownload}
-              size="sm"
-              className="gap-2"
-              disabled={csvLoading || !hasData}
-            >
-              <Download className="h-4 w-4" />
-              CSVダウンロード
-            </Button>
+          <div className="flex flex-wrap gap-6 mt-4">
+            <div className="flex flex-col gap-1">
+              <Button
+                onClick={handleDownload}
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                disabled={csvLoading || !hasData}
+              >
+                <Download className="h-4 w-4" />
+                出退勤CSV
+              </Button>
+              <p className="text-xs text-muted-foreground">作業記録の確認・保管用（全項目含む）</p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Button
+                onClick={handlePayrollDownload}
+                size="sm"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                disabled={payrollCsvLoading || !hasData}
+              >
+                <Calculator className="h-4 w-4" />
+                給与計算用CSV
+              </Button>
+              <p className="text-xs text-muted-foreground">給与計算システムの「出退勤入力」シートに貼り付け可能</p>
+            </div>
           </div>
         </CardContent>
       </Card>

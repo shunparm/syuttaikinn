@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { router, publicProcedure } from "../_core/trpc";
+import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster, leaveRequests } from "../../drizzle/schema";
 
@@ -69,7 +69,7 @@ function computeWorkingMinutes(clockInStr: string | null | undefined, clockOutSt
 }
 
 export const exportRouter = router({
-  getExportData: publicProcedure
+  getExportData: adminProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
@@ -154,7 +154,7 @@ export const exportRouter = router({
       return { rows: rowsWithMinutes, summaries, leaveRows };
     }),
 
-  generateCsvString: publicProcedure
+  generateCsvString: adminProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
@@ -232,6 +232,126 @@ export const exportRouter = router({
             "", "", "", "", "", "",
             (lr.reason ?? "").replace(/,/g,"、").replace(/\n/g," "),
             label,
+          ],
+        };
+      });
+
+      const allRows = [...atRows, ...lvRows].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      const csvContent = [header, ...allRows.map(r => r.cells)].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+      return { csv: "﻿" + csvContent };
+    }),
+
+  // 給与計算システム用CSV（Sheet4：出退勤入力 形式）
+  generatePayrollCsvString: adminProcedure
+    .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      const start = input.startDate;
+      const end   = input.endDate;
+      const startDateStr = toJSTDateStr(start);
+      const endDateStr   = toJSTDateStr(end);
+
+      const atConditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
+      if (input.employeeId) atConditions.push(eq(attendanceRecords.employeeId, input.employeeId));
+
+      const leaveConditions: any[] = [
+        eq(leaveRequests.status, "approved"),
+        gte(leaveRequests.requestDate, startDateStr),
+        lte(leaveRequests.requestDate, endDateStr),
+      ];
+      if (input.employeeId) leaveConditions.push(eq(leaveRequests.employeeId, input.employeeId));
+
+      const [rows, leaveRows] = await Promise.all([
+        db.select({
+          clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
+          workingMinutes: attendanceRecords.workingMinutes,
+          employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
+          siteName: siteMaster.siteName, siteCode: siteMaster.siteId,
+        }).from(attendanceRecords)
+          .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
+          .innerJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
+          .where(and(...atConditions)).orderBy(attendanceRecords.clockInTime),
+        db.select({
+          leaveType: leaveRequests.leaveType,
+          requestDate: leaveRequests.requestDate,
+          employeeName: employeeMaster.name,
+          employeeCode: employeeMaster.employeeId,
+        }).from(leaveRequests)
+          .innerJoin(employeeMaster, eq(leaveRequests.employeeId, employeeMaster.id))
+          .where(and(...leaveConditions)),
+      ]);
+
+      // 残業時間計算（8時間=480分超の分）
+      const calcOvertime = (wm: number | null | undefined): string => {
+        if (!wm || wm <= 480) return "0";
+        return ((wm - 480) / 60).toFixed(2).replace(/\.?0+$/, "");
+      };
+
+      // 時刻を HH:MM（JST）で返す
+      const fmtTime = (s: string | null | undefined): string => {
+        const d = toJSTDate(s);
+        if (!d) return "";
+        return `${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}`;
+      };
+
+      const LEAVE_ATTENDANCE_TYPE: Record<string, string> = {
+        paid_leave: "有給",
+        substitute_holiday: "代休",
+        special_leave: "特休",
+        holiday_request: "休日希望",
+      };
+
+      // 実働時間を時間単位（小数）で返す
+      const fmtHours = (minutes: number | null | undefined): string => {
+        if (!minutes && minutes !== 0) return "";
+        const h = minutes / 60;
+        return h % 1 === 0 ? String(h) : h.toFixed(2).replace(/0+$/, "");
+      };
+
+      const header = ["日付","社員ID","氏名","区分","出勤区分","現場コード","現場名","出勤時刻","退勤時刻","残業時間(h)","遅刻早退(h)","備考","実働時間(h)"];
+
+      type SortableRow = { sortKey: string; cells: string[] };
+
+      const atRows: SortableRow[] = rows.map(r => {
+        const wm = r.workingMinutes ?? computeWorkingMinutes(r.clockInTime, r.clockOutTime);
+        return {
+          sortKey: `${toJSTDateStr(new Date(r.clockInTime))}_${r.employeeCode}`,
+          cells: [
+            fmtDate(r.clockInTime),   // A: 日付
+            r.employeeCode,            // B: 社員ID
+            r.employeeName,            // C: 氏名
+            "",                        // D: 区分
+            "○",                      // E: 出勤区分
+            r.siteCode,               // F: 現場コード
+            r.siteName,               // G: 現場名
+            fmtTime(r.clockInTime),   // H: 出勤時刻
+            fmtTime(r.clockOutTime),  // I: 退勤時刻
+            calcOvertime(wm),          // J: 残業時間(h)
+            "0",                       // K: 遅刻早退(h)
+            "",                        // L: 備考
+            fmtHours(wm),             // M: 実働時間(h)
+          ],
+        };
+      });
+
+      const lvRows: SortableRow[] = leaveRows.map(lr => {
+        const [y, m, d] = lr.requestDate.split("-");
+        return {
+          sortKey: `${lr.requestDate}_${lr.employeeCode}`,
+          cells: [
+            `${y}/${m}/${d}`,                                    // A: 日付
+            lr.employeeCode,                                      // B: 社員ID
+            lr.employeeName,                                      // C: 氏名
+            "",                                                   // D: 区分
+            LEAVE_ATTENDANCE_TYPE[lr.leaveType] ?? lr.leaveType, // E: 出勤区分
+            "",                                                   // F: 現場コード
+            "",                                                   // G: 現場名
+            "",                                                   // H: 出勤時刻
+            "",                                                   // I: 退勤時刻
+            "0",                                                  // J: 残業時間(h)
+            "0",                                                  // K: 遅刻早退(h)
+            "",                                                   // L: 備考
+            "0",                                                  // M: 実働時間(h)
           ],
         };
       });

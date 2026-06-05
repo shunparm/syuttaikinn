@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 
 export default function Login() {
-  const [staffId, setStaffId] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,26 +16,21 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      const response = await fetch("/api/auth/login-staff", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ staffId, password }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId: employeeId || undefined, password }),
         credentials: "include",
       });
-
       if (!response.ok) {
         const data = await response.json();
         setError(data.error || "ログインに失敗しました");
         setLoading(false);
         return;
       }
-
       window.location.href = "/";
-    } catch (err) {
+    } catch {
       setError("ネットワークエラーが発生しました");
       setLoading(false);
     }
@@ -50,33 +45,30 @@ export default function Login() {
               <Lock className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">事務・管理者ログイン</CardTitle>
-          <p className="text-sm text-muted-foreground">社員IDとパスワードでログイン</p>
+          <CardTitle className="text-2xl font-bold">管理者ログイン</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive" className="border-red-200 bg-red-50">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleLogin} className="space-y-4">
-            {error && (
-              <Alert variant="destructive" className="border-red-200 bg-red-50">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
             <div className="space-y-2">
-              <Label htmlFor="staffId" className="text-sm font-medium">
-                社員ID
+              <Label htmlFor="employeeId" className="text-sm font-medium">
+                従業員ID
               </Label>
               <Input
-                id="staffId"
+                id="employeeId"
                 type="text"
-                placeholder="社員IDを入力してください"
-                value={staffId}
-                onChange={(e) => setStaffId(e.target.value)}
+                placeholder="例: EMP001"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
                 disabled={loading}
                 autoFocus
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium">
                 パスワード
@@ -90,11 +82,10 @@ export default function Login() {
                 disabled={loading}
               />
             </div>
-
             <Button
               type="submit"
               className="w-full"
-              disabled={loading || !staffId || !password}
+              disabled={loading || !password}
             >
               {loading ? "ログイン中..." : "ログイン"}
             </Button>

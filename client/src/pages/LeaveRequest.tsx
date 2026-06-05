@@ -51,6 +51,8 @@ export default function LeaveRequest() {
   const [requestDate, setRequestDate] = useState("");
   const [reason, setReason] = useState("");
   const [saved, setSaved] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const HISTORY_PAGE_SIZE = 10;
 
   const { lang, toggle, t } = useLang();
   const isMobile = useIsMobile();
@@ -359,7 +361,7 @@ export default function LeaveRequest() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border/50">
-              {myRequests.map((req) => {
+              {myRequests.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE).map((req) => {
                 const st = statusMap[req.status] ?? {
                   label: req.status,
                   className: "bg-gray-100 text-gray-600",
@@ -424,6 +426,24 @@ export default function LeaveRequest() {
                 );
               })}
             </div>
+            {Math.ceil(myRequests.length / HISTORY_PAGE_SIZE) > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+                <span className="text-xs text-muted-foreground">
+                  {(historyPage - 1) * HISTORY_PAGE_SIZE + 1}–{Math.min(historyPage * HISTORY_PAGE_SIZE, myRequests.length)} / {myRequests.length}件
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))} disabled={historyPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs px-2 tabular-nums">{historyPage} / {Math.ceil(myRequests.length / HISTORY_PAGE_SIZE)}</span>
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                    onClick={() => setHistoryPage(p => Math.min(Math.ceil(myRequests.length / HISTORY_PAGE_SIZE), p + 1))} disabled={historyPage === Math.ceil(myRequests.length / HISTORY_PAGE_SIZE)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

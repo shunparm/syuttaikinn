@@ -1,10 +1,48 @@
 import { z } from "zod";
 import { eq, and, desc, ne, notInArray } from "drizzle-orm";
-import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
-import { getDb } from "../db";
+import { router, publicProcedure, protectedProcedure, adminProcedure } from "../_core/trpc";
+import { getDb, pool } from "../db";
 import { correctionRequests, attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
 
 const iso = (d: Date) => d.toISOString();
+
+// new_record対応のDBマイグレーションを適用（初回のみ実行）
+let newRecordMigrationDone = false;
+async function ensureNewRecordMigration() {
+  if (newRecordMigrationDone) return;
+  const client = await pool.connect();
+  try {
+    // attendanceRecordId の NOT NULL 制約を解除
+    await client.query(`ALTER TABLE correction_requests ALTER COLUMN "attendanceRecordId" DROP NOT NULL`);
+  } catch (e: any) {
+    console.log('DROP NOT NULL (skip):', e.message);
+  }
+  try {
+    // correctionType の CHECK 制約を名前に関わらず全て削除して再作成
+    await client.query(`
+      DO $$
+      DECLARE r RECORD;
+      BEGIN
+        FOR r IN
+          SELECT conname FROM pg_constraint
+          WHERE conrelid = 'correction_requests'::regclass
+            AND contype = 'c'
+            AND pg_get_constraintdef(oid) LIKE '%correctionType%'
+        LOOP
+          EXECUTE 'ALTER TABLE correction_requests DROP CONSTRAINT IF EXISTS "' || r.conname || '"';
+        END LOOP;
+      END $$
+    `);
+    await client.query(`
+      ALTER TABLE correction_requests ADD CONSTRAINT correction_requests_correctiontype_check
+      CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'))
+    `);
+  } catch (e: any) {
+    console.log('CHECK constraint update (skip):', e.message);
+  }
+  newRecordMigrationDone = true;
+  client.release();
+}
 
 // 実働時間計算（12:00〜13:00 JST の重複分を差し引く、UTC環境対応）
 const JST_OFFSET = 9 * 60 * 60 * 1000;
@@ -65,6 +103,7 @@ export const correctionRouter = router({
         if (!input.newClockInTime || !input.newClockOutTime || !input.newSiteId) {
           throw new Error("新規記録追加には出勤時刻・退勤時刻・現場が必要です");
         }
+        await ensureNewRecordMigration();
       } else {
         if (!input.attendanceRecordId) throw new Error("対象記録を選択してください");
         const existing = await db.select().from(correctionRequests)
@@ -113,14 +152,14 @@ export const correctionRouter = router({
       return rows.filter((r) => r.status === input.status);
     }),
 
-  listAllCorrectionRequests: protectedProcedure.query(async () => {
+  listAllCorrectionRequests: adminProcedure.query(async () => {
     const db = getDb();
     return db.select({
       id: correctionRequests.id, attendanceRecordId: correctionRequests.attendanceRecordId,
       employeeId: correctionRequests.employeeId, reason: correctionRequests.reason, correctionType: correctionRequests.correctionType,
       newClockInTime: correctionRequests.newClockInTime, newClockOutTime: correctionRequests.newClockOutTime,
       newSiteId: correctionRequests.newSiteId,
-      status: correctionRequests.status, approvedBy: correctionRequests.approvedBy, approvedAt: correctionRequests.approvedAt,
+      status: correctionRequests.status, approvedBy: correctionRequests.approvedBy, approvedByName: correctionRequests.approvedByName, approvedAt: correctionRequests.approvedAt,
       createdAt: correctionRequests.createdAt, employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
       clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime, siteName: siteMaster.siteName,
     }).from(correctionRequests)
@@ -130,7 +169,7 @@ export const correctionRouter = router({
       .orderBy(desc(correctionRequests.createdAt));
   }),
 
-  approveCorrectionRequest: protectedProcedure
+  approveCorrectionRequest: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
@@ -139,7 +178,7 @@ export const correctionRouter = router({
       const req = rows[0];
       if (req.status !== "pending") throw new Error("この申請は既に処理済みです");
       const now = iso(new Date());
-      await db.update(correctionRequests).set({ status: "approved", approvedBy: ctx.user.id, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
+      await db.update(correctionRequests).set({ status: "approved", approvedBy: ctx.user.id, approvedByName: ctx.user.name ?? null, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
 
       if (req.correctionType === "new_record") {
         if (!req.newClockInTime || !req.newSiteId) throw new Error("新規記録に必要な情報が不足しています");
@@ -182,7 +221,7 @@ export const correctionRouter = router({
       return { success: true };
     }),
 
-  rejectCorrectionRequest: protectedProcedure
+  rejectCorrectionRequest: adminProcedure
     .input(z.object({ id: z.number(), reason: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
@@ -190,12 +229,12 @@ export const correctionRouter = router({
       if (rows.length === 0) throw new Error("申請が見つかりません");
       if (rows[0].status !== "pending") throw new Error("この申請は既に処理済みです");
       const now = iso(new Date());
-      await db.update(correctionRequests).set({ status: "rejected", approvedBy: ctx.user.id, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
+      await db.update(correctionRequests).set({ status: "rejected", approvedBy: ctx.user.id, approvedByName: ctx.user.name ?? null, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
       return { success: true };
     }),
 
   // 訂正申請削除（管理者のみ・処理済みのみ）
-  deleteCorrectionRequest: protectedProcedure
+  deleteCorrectionRequest: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = getDb();

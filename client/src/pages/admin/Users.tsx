@@ -19,7 +19,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Bell, LogIn, LogOut, Shield, User, Users, AlertTriangle } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, LogIn, LogOut, Shield, User, Users, AlertTriangle } from "lucide-react";
+
+const PAGE_SIZE = 10;
 
 type NotifyDialog = {
   open: boolean;
@@ -38,6 +40,7 @@ export default function AdminUsers() {
     newRole: "admin" | "user";
   } | null>(null);
   const [notifyDialog, setNotifyDialog] = useState<NotifyDialog | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data: userList, isLoading, refetch } = trpc.users.listUsers.useQuery();
   const { data: subscribedIds = [] } = trpc.push.getSubscribedUserIds.useQuery();
@@ -94,10 +97,10 @@ export default function AdminUsers() {
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Shield className="h-6 w-6 text-primary" />
-          ユーザー管理
+          スタッフアカウント管理
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          ログインユーザーの一覧と管理者権限の付与・剥奪、打刻催促通知の送信を行います
+          事務・管理者としてログインするアカウントの管理です。打刻のみ行う作業員は「作業員管理」で登録してください。
         </p>
       </div>
 
@@ -157,7 +160,7 @@ export default function AdminUsers() {
             </div>
           ) : (
             <div className="space-y-2">
-              {userList.map((u) => {
+              {userList.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((u) => {
                 const isSelf = currentUser?.id === u.id;
                 const hasSubscription = subscribedIds.includes(u.openId);
                 return (
@@ -259,6 +262,24 @@ export default function AdminUsers() {
                   </div>
                 );
               })}
+              {userList && Math.ceil(userList.length / PAGE_SIZE) > 1 && (
+                <div className="flex items-center justify-between px-2 py-3 border-t border-border/50 mt-2">
+                  <span className="text-xs text-muted-foreground">
+                    {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, userList.length)} / {userList.length}件
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                      onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs px-2 tabular-nums">{page} / {Math.ceil(userList.length / PAGE_SIZE)}</span>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                      onClick={() => setPage(p => Math.min(Math.ceil(userList.length / PAGE_SIZE), p + 1))} disabled={page === Math.ceil(userList.length / PAGE_SIZE)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

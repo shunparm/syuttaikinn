@@ -21,7 +21,9 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Users, Plus, Pencil, Shield, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users, Plus, Pencil, Shield, Trash2 } from "lucide-react";
+
+const PAGE_SIZE = 10;
 import { useLocation } from "wouter";
 
 type Employee = {
@@ -29,7 +31,6 @@ type Employee = {
   employeeId: string;
   name: string;
   nameKana?: string;
-  pin?: string;
   role: string;
   status: string;
   createdAt: string;
@@ -44,8 +45,9 @@ export default function AdminEmployees() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
-  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; pin: string; role: RoleValue }>({
-    employeeId: "", name: "", nameKana: "", pin: "", role: "worker",
+  const [page, setPage] = useState(1);
+  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; role: RoleValue; password: string }>({
+    employeeId: "", name: "", nameKana: "", role: "worker", password: "",
   });
 
   // 削除確認ダイアログ用
@@ -98,7 +100,7 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", nameKana: "", pin: "", role: "worker" });
+    setForm({ employeeId: "", name: "", nameKana: "", role: "worker", password: "" });
     setDialogOpen(true);
   };
 
@@ -108,8 +110,8 @@ export default function AdminEmployees() {
       employeeId: emp.employeeId,
       name: emp.name,
       nameKana: emp.nameKana ?? "",
-      pin: emp.pin ?? "",
       role: (["worker", "staff", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
+      password: "",
     });
     setDialogOpen(true);
   };
@@ -121,7 +123,7 @@ export default function AdminEmployees() {
 
   const handleSubmit = () => {
     if (!form.employeeId || !form.name) {
-      toast.error("作業員IDと氏名は必須です");
+      toast.error("従業員IDと氏名は必須です");
       return;
     }
     if (editTarget) {
@@ -130,16 +132,16 @@ export default function AdminEmployees() {
         employeeId: form.employeeId,
         name: form.name,
         nameKana: form.nameKana || undefined,
-        pin: form.pin || undefined,
         role: form.role,
+        password: form.password || undefined,
       });
     } else {
       createMutation.mutate({
         employeeId: form.employeeId,
         name: form.name,
         nameKana: form.nameKana || undefined,
-        pin: form.pin || undefined,
         role: form.role,
+        password: form.password || undefined,
       });
     }
   };
@@ -207,7 +209,7 @@ export default function AdminEmployees() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">作業員ID</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">従業員ID</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">氏名</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">役割</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">ステータス</th>
@@ -216,7 +218,7 @@ export default function AdminEmployees() {
                   </tr>
                 </thead>
                 <tbody>
-                  {employees.map((emp) => (
+                  {employees.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((emp) => (
                     <tr key={emp.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                       <td className="py-3 px-4 font-mono text-xs text-muted-foreground">{emp.employeeId}</td>
                       <td className="py-3 px-4 font-semibold">{emp.name}</td>
@@ -266,6 +268,24 @@ export default function AdminEmployees() {
                   ))}
                 </tbody>
               </table>
+              {Math.ceil(employees.length / PAGE_SIZE) > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+                  <span className="text-xs text-muted-foreground">
+                    {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, employees.length)} / {employees.length}件
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                      onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs px-2 tabular-nums">{page} / {Math.ceil(employees.length / PAGE_SIZE)}</span>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                      onClick={() => setPage(p => Math.min(Math.ceil(employees.length / PAGE_SIZE), p + 1))} disabled={page === Math.ceil(employees.length / PAGE_SIZE)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -280,7 +300,7 @@ export default function AdminEmployees() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                作業員ID <span className="text-destructive">*</span>
+                従業員ID <span className="text-destructive">*</span>
               </Label>
               <Input
                 placeholder="例: EMP001"
@@ -288,6 +308,7 @@ export default function AdminEmployees() {
                 onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
                 className="h-10"
               />
+              <p className="text-xs text-muted-foreground">給与計算システムと同じIDを入力してください</p>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">
@@ -313,23 +334,10 @@ export default function AdminEmployees() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                PINコード <span className="text-xs text-muted-foreground">（事務・管理者のログインパスワード）</span>
-              </Label>
-              <Input
-                placeholder="4〜6桁の数字"
-                value={form.pin}
-                onChange={(e) => setForm({ ...form, pin: e.target.value })}
-                className="h-10"
-                type="password"
-                maxLength={6}
-              />
-            </div>
-            <div className="space-y-2">
               <Label className="text-sm font-medium">役割</Label>
               <Select
                 value={form.role}
-                onValueChange={(v) => setForm({ ...form, role: v as RoleValue })}
+                onValueChange={(v) => setForm({ ...form, role: v as RoleValue, password: "" })}
               >
                 <SelectTrigger className="h-10">
                   <SelectValue />
@@ -342,6 +350,22 @@ export default function AdminEmployees() {
                 </SelectContent>
               </Select>
             </div>
+            {form.role === "admin" && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  ログインパスワード
+                  {editTarget && <span className="text-xs text-muted-foreground ml-2">（空欄のまま保存すると変更しません）</span>}
+                </Label>
+                <Input
+                  placeholder={editTarget ? "変更する場合のみ入力" : "4文字以上で設定してください"}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="h-10"
+                  type="password"
+                />
+                <p className="text-xs text-muted-foreground">管理者はこのパスワードと従業員IDでログインできます</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>キャンセル</Button>
