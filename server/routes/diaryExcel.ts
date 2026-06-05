@@ -228,6 +228,14 @@ function buildDiarySheet(
   ws.getColumn("K").width = 6.9;
   ws.getColumn("L").width = 6.0;
 
+  // ── 印刷設定（A4・A〜H列・縦向き）
+  ws.pageSetup.paperSize = 9; // A4
+  ws.pageSetup.orientation = "portrait";
+  ws.pageSetup.fitToPage = true;
+  ws.pageSetup.fitToWidth = 1;
+  ws.pageSetup.fitToHeight = 0;
+  ws.printArea = `A1:H${8 + daysInMonth(year, month) + 7}`; // ヘッダー+日別行+注意書き
+
   // ── ヘッダー行 1-2
   setCell(ws, "A1", "参考様式第4－2号別紙(規則第22号第1項第3号関係)", { size: 8 });
   setCell(ws, "H1", "(日本工業規格A列4）", { size: 8 });
