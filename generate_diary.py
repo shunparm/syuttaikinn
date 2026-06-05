@@ -106,7 +106,7 @@ def shuffle_no_triple(lst: list, rng: random.Random) -> list:
 def read_working_days(ws, days_in_month: int) -> list:
     """月次入力シートの行9/10（1〜15日）と行11/12（16〜31日）から出勤日リストを返す。
 
-    行9/11に日付番号、行10/12に出勤フラグ（1=出勤）が入る構造。
+    行9/12に日付番号、行10/13に出勤フラグ（1=出勤）が入る構造。
     列は1始まり（A=1）。
     """
     working = []
@@ -116,8 +116,8 @@ def read_working_days(ws, days_in_month: int) -> list:
         if day and (flag == 1 or flag == "1") and int(day) <= days_in_month:
             working.append(int(day))
     for col in range(1, 17):
-        day = ws.cell(row=11, column=col).value
-        flag = ws.cell(row=12, column=col).value
+        day = ws.cell(row=12, column=col).value
+        flag = ws.cell(row=13, column=col).value
         if day and (flag == 1 or flag == "1") and int(day) <= days_in_month:
             working.append(int(day))
     return sorted(working)
