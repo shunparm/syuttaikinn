@@ -6,10 +6,10 @@ import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
 
 // ─── JST ユーティリティ ──────────────────────────────────────────
-const JST = 9 * 60 * 60 * 1000;
+const JST_OFFSET = 9 * 60 * 60 * 1000;
 
 function toJST(d: Date): Date {
-  return new Date(d.getTime() + JST);
+  return new Date(d.getTime() + JST_OFFSET);
 }
 
 function toJSTDateStr(d: Date): string {
@@ -17,85 +17,48 @@ function toJSTDateStr(d: Date): string {
   return `${j.getUTCFullYear()}-${String(j.getUTCMonth() + 1).padStart(2, "0")}-${String(j.getUTCDate()).padStart(2, "0")}`;
 }
 
-// ─── 実働時間計算（昼休憩12:00〜13:00 JSTを除く）────────────────
-function calcWorkingMinutes(clockIn: Date, clockOut: Date): number {
-  const total = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
-  const jst = toJST(clockIn);
-  const y = jst.getUTCFullYear(), mo = jst.getUTCMonth(), d = jst.getUTCDate();
-  const breakStart = new Date(Date.UTC(y, mo, d, 3, 0));  // 12:00 JST
-  const breakEnd   = new Date(Date.UTC(y, mo, d, 4, 0));  // 13:00 JST
-  const overlap = Math.max(0,
-    Math.min(clockOut.getTime(), breakEnd.getTime()) -
-    Math.max(clockIn.getTime(), breakStart.getTime())
-  );
-  return Math.max(0, total - Math.floor(overlap / 60000));
+// ─── 実働時間計算（6h以上の場合は休憩1h控除、時給制用）──────────
+function calcActualHours(clockIn: Date, clockOut: Date): number {
+  const rawMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
+  const rawHours = rawMinutes / 60;
+  // 6時間以上の場合は休憩1時間を控除
+  return rawHours >= 6 ? rawHours - 1 : rawHours;
 }
 
-// ─── 深夜時間計算（22:00〜翌5:00 JST）──────────────────────────
-function calcLateNightMinutes(clockIn: Date, clockOut: Date): number {
-  let lateNight = 0;
-  const jst = toJST(clockIn);
-  const y = jst.getUTCFullYear(), mo = jst.getUTCMonth(), d = jst.getUTCDate();
+// ─── 雇用区分別 基本給計算 ────────────────────────────────────────
+type EmploymentType = "月給" | "日給" | "時給" | "実習生";
 
-  // 当日 22:00〜24:00 (UTC 13:00〜15:00)
-  const lnStart1 = new Date(Date.UTC(y, mo, d, 13, 0));
-  const lnEnd1   = new Date(Date.UTC(y, mo, d, 15, 0));
-  // 翌日 0:00〜5:00 (UTC 15:00〜20:00)
-  const lnStart2 = new Date(Date.UTC(y, mo, d, 15, 0));
-  const lnEnd2   = new Date(Date.UTC(y, mo, d, 20, 0));
-
-  for (const [s, e] of [[lnStart1, lnEnd1], [lnStart2, lnEnd2]]) {
-    const overlap = Math.max(0,
-      Math.min(clockOut.getTime(), e.getTime()) -
-      Math.max(clockIn.getTime(), s.getTime())
-    );
-    lateNight += Math.floor(overlap / 60000);
-  }
-  return lateNight;
+interface AttendanceSummary {
+  fullDays: number;       // ○ の日数
+  halfDays: number;       // △ の日数
+  paidLeaveDays: number;  // 有給 の日数
+  actualHours: number;    // 実働時間合計（時給制用）
+  overtimeHours: number;  // 残業時間合計
+  manualAllowance: number; // 手当・控除合計（J列）
+  replacementCost: number; // 立替金合計
 }
 
-// ─── 遅刻・早退計算（標準8:00〜17:00 JST）──────────────────────
-function calcDeductionMinutes(clockIn: Date, clockOut: Date | null): number {
-  const jst = toJST(clockIn);
-  const y = jst.getUTCFullYear(), mo = jst.getUTCMonth(), d = jst.getUTCDate();
-  const stdIn  = new Date(Date.UTC(y, mo, d, 23, 0));   // 8:00 JST = UTC前日23:00... ※要補正
-  // 正しい UTC換算: 8:00 JST = UTC -1日 23:00 ではなく当日-9h
-  const stdStart = new Date(Date.UTC(y, mo, d) - JST + 8 * 60 * 60 * 1000);  // 8:00 JST
-  const stdEnd   = new Date(Date.UTC(y, mo, d) - JST + 17 * 60 * 60 * 1000); // 17:00 JST
-
-  let deduction = 0;
-  // 遅刻
-  if (clockIn > stdStart) {
-    deduction += Math.floor((clockIn.getTime() - stdStart.getTime()) / 60000);
-  }
-  // 早退（退勤が17:00より早く かつ 実働8時間未満）
-  if (clockOut && clockOut < stdEnd) {
-    const worked = calcWorkingMinutes(clockIn, clockOut);
-    if (worked < 480) {
-      deduction += Math.floor((stdEnd.getTime() - clockOut.getTime()) / 60000);
+function calcBasicPay(
+  empType: EmploymentType,
+  monthlySalary: number,
+  dailyWage: number,
+  hourlyWage: number,
+  summary: AttendanceSummary,
+): number {
+  switch (empType) {
+    case "月給":
+    case "実習生":
+      return monthlySalary;
+    case "日給": {
+      // ○=1日、△=0.5日、有給=1日
+      const effectiveDays = summary.fullDays + summary.halfDays * 0.5 + summary.paidLeaveDays;
+      return Math.floor(dailyWage * effectiveDays);
     }
+    case "時給":
+      return Math.floor(hourlyWage * summary.actualHours);
+    default:
+      return 0;
   }
-  return deduction;
-}
-
-// ─── 1日分の給与計算 ─────────────────────────────────────────────
-function calcDaySalary(clockIn: Date, clockOut: Date | null, hourlyWage: number) {
-  if (!clockOut) {
-    return { workMinutes: 0, regularPay: 0, overtimePay: 0, lateNightPay: 0, deduction: 0 };
-  }
-  const workMinutes   = calcWorkingMinutes(clockIn, clockOut);
-  const overtimeMin   = Math.max(0, workMinutes - 480);
-  const regularMin    = workMinutes - overtimeMin;
-  const lateNightMin  = calcLateNightMinutes(clockIn, clockOut);
-  const deductionMin  = calcDeductionMinutes(clockIn, clockOut);
-
-  const perMin = hourlyWage / 60;
-  const regularPay   = Math.floor(regularMin * perMin);
-  const overtimePay  = Math.floor(overtimeMin * perMin * 0.25);   // 割増25%分のみ
-  const lateNightPay = Math.floor(lateNightMin * perMin * 0.25);  // 深夜割増25%分のみ
-  const deduction    = Math.floor(deductionMin * perMin);
-
-  return { workMinutes, regularPay, overtimePay, lateNightPay, deduction };
 }
 
 // ─── 月次給与集計 ────────────────────────────────────────────────
@@ -114,10 +77,23 @@ async function calcMonthly(year: number, month: number, employeeId?: number) {
   const rows = await db.select({
     clockInTime: attendanceRecords.clockInTime,
     clockOutTime: attendanceRecords.clockOutTime,
-    employeeName: employeeMaster.name,
-    employeeCode: employeeMaster.employeeId,
+    attendanceType: attendanceRecords.attendanceType,
+    overtimeHours: attendanceRecords.overtimeHours,
+    manualAllowance: attendanceRecords.manualAllowance,
+    replacementCost: attendanceRecords.replacementCost,
     empId: employeeMaster.id,
+    employeeCode: employeeMaster.employeeId,
+    employeeName: employeeMaster.name,
+    employmentType: employeeMaster.employmentType,
+    monthlySalary: employeeMaster.monthlySalary,
+    dailyWage: employeeMaster.dailyWage,
     hourlyWage: employeeMaster.hourlyWage,
+    healthInsurance: employeeMaster.healthInsurance,
+    pension: employeeMaster.pension,
+    employmentInsuranceRate: employeeMaster.employmentInsuranceRate,
+    incomeTax: employeeMaster.incomeTax,
+    residentTax: employeeMaster.residentTax,
+    welfareFee: employeeMaster.welfareFee,
     siteName: siteMaster.siteName,
   })
     .from(attendanceRecords)
@@ -126,37 +102,132 @@ async function calcMonthly(year: number, month: number, employeeId?: number) {
     .where(and(...conditions))
     .orderBy(attendanceRecords.clockInTime);
 
-  // 従業員ごとに集計
-  const map = new Map<number, {
-    employeeId: number; employeeName: string; employeeCode: string; hourlyWage: number;
-    days: { date: string; siteName: string; workMinutes: number; regularPay: number; overtimePay: number; lateNightPay: number; deduction: number }[];
-    totalWorkMinutes: number; totalRegularPay: number; totalOvertimePay: number; totalLateNightPay: number; totalDeduction: number; totalPay: number;
-  }>();
+  type EmpRecord = {
+    employeeId: number;
+    employeeCode: string;
+    employeeName: string;
+    employmentType: EmploymentType;
+    monthlySalary: number;
+    dailyWage: number;
+    hourlyWage: number;
+    healthInsurance: number;
+    pension: number;
+    employmentInsuranceRate: number;
+    incomeTax: number;
+    residentTax: number;
+    welfareFee: number;
+    summary: AttendanceSummary;
+    days: {
+      date: string;
+      siteName: string;
+      attendanceType: string;
+      overtimeHours: number;
+      manualAllowance: number;
+      replacementCost: number;
+    }[];
+  };
+
+  const map = new Map<number, EmpRecord>();
 
   for (const row of rows) {
     if (!map.has(row.empId)) {
       map.set(row.empId, {
-        employeeId: row.empId, employeeName: row.employeeName,
-        employeeCode: row.employeeCode, hourlyWage: row.hourlyWage ?? 1000,
-        days: [], totalWorkMinutes: 0, totalRegularPay: 0,
-        totalOvertimePay: 0, totalLateNightPay: 0, totalDeduction: 0, totalPay: 0,
+        employeeId: row.empId,
+        employeeCode: row.employeeCode,
+        employeeName: row.employeeName,
+        employmentType: (row.employmentType ?? "日給") as EmploymentType,
+        monthlySalary: row.monthlySalary ?? 0,
+        dailyWage: row.dailyWage ?? 0,
+        hourlyWage: row.hourlyWage ?? 1000,
+        healthInsurance: row.healthInsurance ?? 0,
+        pension: row.pension ?? 0,
+        employmentInsuranceRate: row.employmentInsuranceRate ?? 0.006,
+        incomeTax: row.incomeTax ?? 0,
+        residentTax: row.residentTax ?? 0,
+        welfareFee: row.welfareFee ?? 0,
+        summary: { fullDays: 0, halfDays: 0, paidLeaveDays: 0, actualHours: 0, overtimeHours: 0, manualAllowance: 0, replacementCost: 0 },
+        days: [],
       });
     }
-    const emp = map.get(row.empId)!;
-    const clockIn  = new Date(row.clockInTime);
-    const clockOut = row.clockOutTime ? new Date(row.clockOutTime) : null;
-    const day = calcDaySalary(clockIn, clockOut, emp.hourlyWage);
 
-    emp.days.push({ date: toJSTDateStr(clockIn), siteName: row.siteName, ...day });
-    emp.totalWorkMinutes += day.workMinutes;
-    emp.totalRegularPay  += day.regularPay;
-    emp.totalOvertimePay += day.overtimePay;
-    emp.totalLateNightPay += day.lateNightPay;
-    emp.totalDeduction   += day.deduction;
-    emp.totalPay = emp.totalRegularPay + emp.totalOvertimePay + emp.totalLateNightPay - emp.totalDeduction;
+    const emp = map.get(row.empId)!;
+    const aType = row.attendanceType ?? "○";
+    const overtimeH = row.overtimeHours ?? 0;
+    const manualAl = row.manualAllowance ?? 0;
+    const repCost  = row.replacementCost ?? 0;
+
+    // 勤怠区分の集計
+    if (aType === "○" || aType === "出") emp.summary.fullDays++;
+    else if (aType === "△") emp.summary.halfDays++;
+    else if (aType === "有給") emp.summary.paidLeaveDays++;
+
+    // 実働時間（時給制のみ使用）
+    if (row.clockOutTime) {
+      const clockIn  = new Date(row.clockInTime);
+      const clockOut = new Date(row.clockOutTime);
+      emp.summary.actualHours += calcActualHours(clockIn, clockOut);
+    }
+
+    emp.summary.overtimeHours  += overtimeH;
+    emp.summary.manualAllowance += manualAl;
+    emp.summary.replacementCost += repCost;
+
+    emp.days.push({
+      date: toJSTDateStr(new Date(row.clockInTime)),
+      siteName: row.siteName,
+      attendanceType: aType,
+      overtimeHours: overtimeH,
+      manualAllowance: manualAl,
+      replacementCost: repCost,
+    });
   }
 
-  return Array.from(map.values());
+  return Array.from(map.values()).map(emp => {
+    const basicPay   = calcBasicPay(emp.employmentType, emp.monthlySalary, emp.dailyWage, emp.hourlyWage, emp.summary);
+    const overtimePay = Math.floor(emp.hourlyWage * emp.summary.overtimeHours * 1.25);
+    const manualAllowance = emp.summary.manualAllowance;
+    const grossPay   = basicPay + overtimePay + manualAllowance;
+
+    const healthInsurance      = emp.healthInsurance;
+    const pension              = emp.pension;
+    const employmentInsurance  = Math.round(grossPay * emp.employmentInsuranceRate);
+    const incomeTax            = emp.incomeTax;
+    const residentTax          = emp.residentTax;
+    const welfareFee           = emp.welfareFee;
+    const replacementCost      = emp.summary.replacementCost;
+
+    const netPay = grossPay - healthInsurance - pension - employmentInsurance - incomeTax - residentTax - welfareFee - replacementCost;
+
+    return {
+      employeeId:   emp.employeeId,
+      employeeCode: emp.employeeCode,
+      employeeName: emp.employeeName,
+      employmentType: emp.employmentType,
+      dailyWage:    emp.dailyWage,
+      hourlyWage:   emp.hourlyWage,
+      monthlySalary: emp.monthlySalary,
+      summary: {
+        fullDays:       emp.summary.fullDays,
+        halfDays:       emp.summary.halfDays,
+        paidLeaveDays:  emp.summary.paidLeaveDays,
+        actualHours:    Math.round(emp.summary.actualHours * 100) / 100,
+        overtimeHours:  Math.round(emp.summary.overtimeHours * 100) / 100,
+      },
+      basicPay,
+      overtimePay,
+      manualAllowance,
+      grossPay,
+      healthInsurance,
+      pension,
+      employmentInsurance,
+      incomeTax,
+      residentTax,
+      welfareFee,
+      replacementCost,
+      netPay,
+      days: emp.days,
+    };
+  });
 }
 
 // ─── ルーター ────────────────────────────────────────────────────
@@ -174,6 +245,10 @@ export const kyuyoRouter = router({
     }),
 
   // 給与計算結果をExcelでダウンロード（base64）
+  // 列構成: A:社員ID B:氏名 C:雇用区分 D:基本給/日給単価 E:出勤日数 F:残業時間
+  //         G:有給日数 H:基本給支給額 I:残業手当 J:手当合計 K:総支給額
+  //         L:健康保険 M:厚生年金 N:雇用保険 O:所得税 P:控除後支給額
+  //         Q:住民税 R:友愛会費 S:立替金 T:手取金額
   exportExcel: publicProcedure
     .input(z.object({
       year:       z.number().int().min(2000).max(2100),
@@ -184,57 +259,111 @@ export const kyuyoRouter = router({
       const results = await calcMonthly(input.year, input.month, input.employeeId);
 
       const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet(`${input.year}年${input.month}月`);
 
+      // タイトル行
+      ws.mergeCells("A1:T1");
+      ws.getCell("A1").value = `給与計算書　${input.year}年${input.month}月`;
+      ws.getCell("A1").font = { bold: true, size: 14 };
+      ws.getCell("A1").alignment = { horizontal: "center" };
+
+      // ヘッダー行
+      const headers = [
+        "社員ID", "氏名", "雇用区分", "基本給/日給単価",
+        "出勤日数", "残業時間", "有給日数",
+        "基本給支給額", "残業手当", "手当合計", "総支給額",
+        "健康保険", "厚生年金", "雇用保険", "所得税",
+        "控除後支給額", "住民税", "友愛会費", "立替金", "手取金額",
+      ];
+      ws.getRow(2).values = ["", ...headers];
+      const headerRow = ws.getRow(2);
+      headerRow.font = { bold: true };
+      headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
+      headerRow.alignment = { horizontal: "center" };
+
+      let rowIdx = 3;
       for (const emp of results) {
-        const ws = wb.addWorksheet(emp.employeeName);
+        const effectiveDays = emp.summary.fullDays + emp.summary.halfDays * 0.5;
+        const afterDeduction = emp.grossPay - emp.healthInsurance - emp.pension - emp.employmentInsurance - emp.incomeTax;
 
-        // ヘッダー
-        ws.mergeCells("A1:G1");
-        ws.getCell("A1").value = `給与計算書　${input.year}年${input.month}月　${emp.employeeName}`;
-        ws.getCell("A1").font = { bold: true, size: 13 };
-        ws.getCell("A1").alignment = { horizontal: "center" };
+        ws.getRow(rowIdx).values = [
+          "",                      // A (index 1, skip)
+          emp.employeeCode,        // A
+          emp.employeeName,        // B
+          emp.employmentType,      // C
+          emp.employmentType === "月給" || emp.employmentType === "実習生"
+            ? emp.monthlySalary
+            : emp.employmentType === "日給"
+              ? emp.dailyWage
+              : emp.hourlyWage,    // D
+          effectiveDays,           // E
+          emp.summary.overtimeHours, // F
+          emp.summary.paidLeaveDays, // G
+          emp.basicPay,            // H
+          emp.overtimePay,         // I
+          emp.manualAllowance,     // J
+          emp.grossPay,            // K
+          emp.healthInsurance,     // L
+          emp.pension,             // M
+          emp.employmentInsurance, // N
+          emp.incomeTax,           // O
+          afterDeduction,          // P 控除後支給額
+          emp.residentTax,         // Q
+          emp.welfareFee,          // R
+          emp.replacementCost,     // S
+          emp.netPay,              // T
+        ];
 
-        ws.getRow(2).values = ["", `時給: ${emp.hourlyWage}円`];
-
-        ws.getRow(4).values = ["日付", "現場", "実働(h)", "基本給", "残業割増", "深夜割増", "控除"];
-        ws.getRow(4).font = { bold: true };
-        ws.getRow(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
-
-        let rowIdx = 5;
-        for (const d of emp.days) {
-          ws.getRow(rowIdx).values = [
-            d.date,
-            d.siteName,
-            Math.round(d.workMinutes / 60 * 10) / 10,
-            d.regularPay,
-            d.overtimePay,
-            d.lateNightPay,
-            d.deduction,
-          ];
-          rowIdx++;
+        // 金額列に数値フォーマット
+        for (const col of [4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]) {
+          const cell = ws.getRow(rowIdx).getCell(col + 1);
+          cell.numFmt = "#,##0";
         }
 
-        // 合計行
-        ws.getRow(rowIdx).values = [
-          "合計", "",
-          Math.round(emp.totalWorkMinutes / 60 * 10) / 10,
-          emp.totalRegularPay,
-          emp.totalOvertimePay,
-          emp.totalLateNightPay,
-          emp.totalDeduction,
-        ];
-        ws.getRow(rowIdx).font = { bold: true };
-
-        rowIdx += 2;
-        ws.getCell(`A${rowIdx}`).value = "総支給額";
-        ws.getCell(`B${rowIdx}`).value = emp.totalPay;
-        ws.getCell(`B${rowIdx}`).font = { bold: true, size: 12, color: { argb: "FF0070C0" } };
-
-        ws.columns = [
-          { width: 14 }, { width: 24 }, { width: 10 },
-          { width: 12 }, { width: 12 }, { width: 12 }, { width: 10 },
-        ];
+        rowIdx++;
       }
+
+      // 合計行
+      if (results.length > 0) {
+        const totalRow = ws.getRow(rowIdx);
+        totalRow.getCell(2).value = "合計";
+        const sumCols = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; // K〜T (1-indexed: 11〜20)
+        for (const col of sumCols) {
+          let total = 0;
+          for (let r = 3; r < rowIdx; r++) {
+            const v = ws.getRow(r).getCell(col).value;
+            if (typeof v === "number") total += v;
+          }
+          totalRow.getCell(col).value = total;
+          totalRow.getCell(col).numFmt = "#,##0";
+        }
+        totalRow.font = { bold: true };
+        totalRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
+      }
+
+      ws.columns = [
+        { width: 2 },  // placeholder
+        { width: 10 }, // A 社員ID
+        { width: 16 }, // B 氏名
+        { width: 10 }, // C 雇用区分
+        { width: 14 }, // D 基本給/日給単価
+        { width: 10 }, // E 出勤日数
+        { width: 10 }, // F 残業時間
+        { width: 10 }, // G 有給日数
+        { width: 12 }, // H 基本給支給額
+        { width: 12 }, // I 残業手当
+        { width: 12 }, // J 手当合計
+        { width: 12 }, // K 総支給額
+        { width: 12 }, // L 健康保険
+        { width: 12 }, // M 厚生年金
+        { width: 12 }, // N 雇用保険
+        { width: 12 }, // O 所得税
+        { width: 12 }, // P 控除後支給額
+        { width: 12 }, // Q 住民税
+        { width: 12 }, // R 友愛会費
+        { width: 12 }, // S 立替金
+        { width: 12 }, // T 手取金額
+      ];
 
       const buffer = await wb.xlsx.writeBuffer();
       const base64 = Buffer.from(buffer).toString("base64");

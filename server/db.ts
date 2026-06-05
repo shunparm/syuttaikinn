@@ -203,6 +203,58 @@ export async function initDb() {
         CHECK("correctionType" IN ('time_correction', 'cancel', 'site_change', 'other', 'new_record'))
       `);
     } catch (e: any) { console.log('initDb CHECK constraint (skip):', e.message); }
+
+    // 給与計算v3対応マイグレーション: employee_masterへの控除マスタカラム追加
+    const empAlters = [
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS employment_type TEXT DEFAULT '日給'`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS monthly_salary INTEGER DEFAULT 0`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS daily_wage INTEGER DEFAULT 0`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS health_insurance INTEGER DEFAULT 0`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS pension INTEGER DEFAULT 0`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS employment_insurance_rate REAL DEFAULT 0.006`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS income_tax INTEGER DEFAULT 0`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS resident_tax INTEGER DEFAULT 0`,
+      `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS welfare_fee INTEGER DEFAULT 0`,
+    ];
+    for (const sql of empAlters) {
+      try { await client.query(sql); } catch (e: any) { console.log('initDb emp alter (skip):', e.message); }
+    }
+
+    // 給与計算v3対応マイグレーション: attendance_recordsへの勤怠区分カラム追加
+    const attAlters = [
+      `ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS attendance_type TEXT DEFAULT '○'`,
+      `ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS overtime_hours REAL DEFAULT 0`,
+      `ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS manual_allowance INTEGER DEFAULT 0`,
+      `ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS replacement_cost INTEGER DEFAULT 0`,
+    ];
+    for (const sql of attAlters) {
+      try { await client.query(sql); } catch (e: any) { console.log('initDb att alter (skip):', e.message); }
+    }
+
+    // 給与計算v3対応マイグレーション: kyuyo_recordsテーブルを新スキーマに再作成
+    // 既存テーブルに新カラムを追加（既存データ保持）
+    const kyuyoAlters = [
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS employee_id INTEGER REFERENCES employee_master(id)`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS employment_type TEXT`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS basic_pay INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS overtime_pay INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS manual_allowance INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS gross_pay INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS health_insurance INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS pension INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS employment_insurance INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS income_tax INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS resident_tax INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS welfare_fee INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS replacement_cost INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS net_pay INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS created_at TEXT NOT NULL DEFAULT now()::text`,
+      `ALTER TABLE kyuyo_records ADD COLUMN IF NOT EXISTS updated_at TEXT NOT NULL DEFAULT now()::text`,
+    ];
+    for (const sql of kyuyoAlters) {
+      try { await client.query(sql); } catch (e: any) { console.log('initDb kyuyo alter (skip):', e.message); }
+    }
   } finally {
     client.release();
   }

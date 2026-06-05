@@ -1,9 +1,6 @@
-import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, real } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
-/**
- * Core user table backing auth flow.
- */
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   openId: text("openId").notNull().unique(),
@@ -28,7 +25,20 @@ export const employeeMaster = pgTable("employee_master", {
   passwordHash: text("passwordHash"),
   role: text("role").default("worker").notNull(), // 'worker' | 'staff' | 'admin'
   status: text("status").default("active").notNull(), // 'active' | 'inactive'
-  hourlyWage: integer("hourlyWage").default(1000), // 時給（円）
+  isActive: boolean("is_active").default(true),
+  // 雇用区分: '月給' | '日給' | '時給' | '実習生'
+  employmentType: text("employment_type").default("日給"),
+  // 給与単価
+  monthlySalary: integer("monthly_salary").default(0),
+  dailyWage: integer("daily_wage").default(0),
+  hourlyWage: integer("hourlyWage").default(1000), // 既存カラム名を維持
+  // 控除マスタ（固定月額）
+  healthInsurance: integer("health_insurance").default(0),
+  pension: integer("pension").default(0),
+  employmentInsuranceRate: real("employment_insurance_rate").default(0.006),
+  incomeTax: integer("income_tax").default(0),
+  residentTax: integer("resident_tax").default(0),
+  welfareFee: integer("welfare_fee").default(0),
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
 });
@@ -62,6 +72,14 @@ export const attendanceRecords = pgTable("attendance_records", {
   workingMinutes: integer("workingMinutes"),
   status: text("status").default("active").notNull(), // 'active' | 'deleted'
   isCorrected: boolean("isCorrected").default(false).notNull(),
+  // 勤怠区分: '○' | '△' | '出' | '有給' | '欠勤'
+  attendanceType: text("attendance_type").default("○"),
+  // 残業時間（時間単位）
+  overtimeHours: real("overtime_hours").default(0),
+  // 手当・控除（手動入力、J列相当）
+  manualAllowance: integer("manual_allowance").default(0),
+  // 立替金
+  replacementCost: integer("replacement_cost").default(0),
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
 });
@@ -101,7 +119,7 @@ export const leaveRequests = pgTable("leave_requests", {
   approvedBy: integer("approvedBy"),
   approvedByName: text("approvedByName"),
   approvedAt: text("approvedAt"),
-  note: text("note"), // 管理者コメント
+  note: text("note"),
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
 });
@@ -112,17 +130,24 @@ export type InsertLeaveRequest = typeof leaveRequests.$inferInsert;
 // ─── 給与計算記録 ─────────────────────────────────────────────────
 export const kyuyoRecords = pgTable("kyuyo_records", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employeeId").notNull().references(() => employeeMaster.id),
+  employeeId: integer("employee_id").notNull().references(() => employeeMaster.id),
   year: integer("year").notNull(),
   month: integer("month").notNull(),
-  basePay: integer("basePay").notNull().default(0),
-  overtimePay: integer("overtimePay").notNull().default(0),
-  lateNightPay: integer("lateNightPay").notNull().default(0),
-  deductions: integer("deductions").notNull().default(0),
-  totalPay: integer("totalPay").notNull().default(0),
-  details: text("details"), // 日次明細 JSON
-  createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
-  updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
+  employmentType: text("employment_type"),
+  basicPay: integer("basic_pay").notNull().default(0),
+  overtimePay: integer("overtime_pay").notNull().default(0),
+  manualAllowance: integer("manual_allowance").notNull().default(0),
+  grossPay: integer("gross_pay").notNull().default(0),
+  healthInsurance: integer("health_insurance").notNull().default(0),
+  pension: integer("pension").notNull().default(0),
+  employmentInsurance: integer("employment_insurance").notNull().default(0),
+  incomeTax: integer("income_tax").notNull().default(0),
+  residentTax: integer("resident_tax").notNull().default(0),
+  welfareFee: integer("welfare_fee").notNull().default(0),
+  replacementCost: integer("replacement_cost").notNull().default(0),
+  netPay: integer("net_pay").notNull().default(0),
+  createdAt: text("created_at").default(sql`(now()::text)`).notNull(),
+  updatedAt: text("updated_at").default(sql`(now()::text)`).notNull(),
 });
 
 export type KyuyoRecord = typeof kyuyoRecords.$inferSelect;
