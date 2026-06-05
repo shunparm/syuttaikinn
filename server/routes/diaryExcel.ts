@@ -9,7 +9,7 @@ import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster, leaveRequests } from "../../drizzle/schema";
 
 const RUN_PY = join(process.cwd(), "run.py");
-const DIARY_TEMPLATE = process.env.DIARY_TEMPLATE_PATH ?? join(process.cwd(), "..", "日誌テンプレート.xlsx");
+const DIARY_TEMPLATE = process.env.DIARY_TEMPLATE_PATH ?? join(process.cwd(), "日誌テンプレート.xlsx");
 
 // ─── JST ユーティリティ ─────────────────────────────────────────
 const JST_OFFSET = 9 * 60 * 60 * 1000;
