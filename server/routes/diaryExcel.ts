@@ -103,8 +103,21 @@ function allocateDays(nDays: number, month: number): Record<number, number> {
   for (const [k, v] of Object.entries(reqs)) minD[Number(k)] = Math.ceil(v / 8);
   const totalMin = Object.values(minD).reduce((s, v) => s + v, 0);
   const alloc = { ...minD };
-  if (nDays >= totalMin) { alloc[1] += nDays - totalMin; }
-  else if (nDays > 0) { alloc[1] -= Math.min(totalMin - nDays, alloc[1] - 1); }
+  if (nDays >= totalMin) {
+    // 余剰日数は番号1に上乗せ（全番号の必要時間を満たす）
+    alloc[1] += nDays - totalMin;
+  } else if (nDays > 0) {
+    // 番号1から削る（最低1日は残す）
+    let deficit = totalMin - nDays;
+    const take1 = Math.min(deficit, alloc[1] - 1);
+    alloc[1] -= take1;
+    deficit -= take1;
+    // まだ足りなければ番号3からも削る（Pythonと同じ挙動）
+    if (deficit > 0) {
+      const take3 = Math.min(deficit, alloc[3] - 1);
+      alloc[3] -= take3;
+    }
+  }
   return alloc;
 }
 
