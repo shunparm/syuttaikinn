@@ -9,6 +9,8 @@ import { leaveRequestRouter } from "./routers/leaveRequest";
 import { exportRouter } from "./routers/export";
 import { usersRouter } from "./routers/users";
 import { pushNotificationRouter } from "./routers/pushNotification";
+import { kyuyoRouter } from "./routers/kyuyo";
+import { nisshoRouter } from "./routers/nissho";
 
 export const appRouter = router({
   system: systemRouter,
@@ -41,6 +43,12 @@ export const appRouter = router({
 
   // プッシュ通知
   push: pushNotificationRouter,
+
+  // 給与計算
+  kyuyo: kyuyoRouter,
+
+  // 日報
+  nissho: nisshoRouter,
 });
 
 export type AppRouter = typeof appRouter;

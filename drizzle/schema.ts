@@ -28,6 +28,7 @@ export const employeeMaster = pgTable("employee_master", {
   passwordHash: text("passwordHash"),
   role: text("role").default("worker").notNull(), // 'worker' | 'staff' | 'admin'
   status: text("status").default("active").notNull(), // 'active' | 'inactive'
+  hourlyWage: integer("hourlyWage").default(1000), // 時給（円）
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
 });
@@ -107,3 +108,35 @@ export const leaveRequests = pgTable("leave_requests", {
 
 export type LeaveRequest = typeof leaveRequests.$inferSelect;
 export type InsertLeaveRequest = typeof leaveRequests.$inferInsert;
+
+// ─── 給与計算記録 ─────────────────────────────────────────────────
+export const kyuyoRecords = pgTable("kyuyo_records", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employeeId").notNull().references(() => employeeMaster.id),
+  year: integer("year").notNull(),
+  month: integer("month").notNull(),
+  basePay: integer("basePay").notNull().default(0),
+  overtimePay: integer("overtimePay").notNull().default(0),
+  lateNightPay: integer("lateNightPay").notNull().default(0),
+  deductions: integer("deductions").notNull().default(0),
+  totalPay: integer("totalPay").notNull().default(0),
+  details: text("details"), // 日次明細 JSON
+  createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
+  updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
+});
+
+export type KyuyoRecord = typeof kyuyoRecords.$inferSelect;
+export type InsertKyuyoRecord = typeof kyuyoRecords.$inferInsert;
+
+// ─── 日報記録 ────────────────────────────────────────────────────
+export const nisshoRecords = pgTable("nissho_records", {
+  id: serial("id").primaryKey(),
+  employeeId: integer("employeeId").notNull().references(() => employeeMaster.id),
+  date: text("date").notNull(), // YYYY-MM-DD JST
+  content: text("content").notNull(),
+  createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
+  updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
+});
+
+export type NisshoRecord = typeof nisshoRecords.$inferSelect;
+export type InsertNisshoRecord = typeof nisshoRecords.$inferInsert;

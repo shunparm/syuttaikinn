@@ -136,6 +136,29 @@ export async function initDb() {
       INSERT INTO notification_config (id, clock_in_time, clock_out_time)
       VALUES (1, '08:00', '17:00')
       ON CONFLICT (id) DO NOTHING;
+      ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "hourlyWage" INTEGER NOT NULL DEFAULT 1000;
+      CREATE TABLE IF NOT EXISTS kyuyo_records (
+        id SERIAL PRIMARY KEY,
+        "employeeId" INTEGER NOT NULL REFERENCES employee_master(id),
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        "basePay" INTEGER NOT NULL DEFAULT 0,
+        "overtimePay" INTEGER NOT NULL DEFAULT 0,
+        "lateNightPay" INTEGER NOT NULL DEFAULT 0,
+        deductions INTEGER NOT NULL DEFAULT 0,
+        "totalPay" INTEGER NOT NULL DEFAULT 0,
+        details TEXT,
+        "createdAt" TEXT NOT NULL DEFAULT now()::text,
+        "updatedAt" TEXT NOT NULL DEFAULT now()::text
+      );
+      CREATE TABLE IF NOT EXISTS nissho_records (
+        id SERIAL PRIMARY KEY,
+        "employeeId" INTEGER NOT NULL REFERENCES employee_master(id),
+        date TEXT NOT NULL,
+        content TEXT NOT NULL,
+        "createdAt" TEXT NOT NULL DEFAULT now()::text,
+        "updatedAt" TEXT NOT NULL DEFAULT now()::text
+      );
       CREATE TABLE IF NOT EXISTS leave_requests (
         id SERIAL PRIMARY KEY,
         "employeeId" INTEGER NOT NULL REFERENCES employee_master(id),
