@@ -9,10 +9,10 @@
   python run.py 出勤簿.csv
   python run.py 出勤簿.csv --trainees EMP008,EMP009,EMP010,EMP011
   python run.py 出勤簿.csv --supervisor 中原
-  python run.py 出勤簿.csv --excel 技能実習日誌_入力補助.xlsx
+  python run.py 出勤簿.csv --excel 日誌テンプレート.xlsx
   python run.py 出勤簿.csv --seed 42
 
-出力: Excelファイルに「{年}.{月}_{従業員コード}」シートを追加
+出力: Excelファイルに「{年}.{月}_{名前}」シートを追加
       同名シートが既に存在する場合は上書き
 """
 
@@ -30,7 +30,7 @@ import openpyxl
 # ── 定数 ───────────────────────────────────────────────────────
 DEFAULT_SUPERVISOR = "中原"
 
-EXCLUDED_SHEETS = {"★日誌自動生成", "■入力マスタ", "月次入力"}
+EXCLUDED_SHEETS: set = set()  # テンプレートファイルには不要なシートは含まれていない
 
 MONTHLY_REQUIRED = {
     1:  {1: 91, 2: 10, 3: 44, 4: 8, 5: 15, 6: 8},
@@ -307,9 +307,11 @@ def main():
         excel_path = Path(args.excel)
     else:
         candidates = list(csv_path.parent.glob("*.xlsx"))
-        # ホームディレクトリも探す
+        # ホームディレクトリも探す（日誌テンプレート.xlsx を優先）
         if not candidates:
-            candidates = list(Path.home().glob("技能実習日誌*.xlsx"))
+            priority = list(Path.home().glob("日誌テンプレート.xlsx"))
+            fallback = list(Path.home().glob("技能実習日誌*.xlsx"))
+            candidates = priority + fallback
         if not candidates:
             print("エラー: Excelファイルが見つかりません。--excel で指定してください。")
             sys.exit(1)
