@@ -20,6 +20,7 @@ import argparse
 import calendar
 import csv
 import datetime
+import json
 import math
 import random
 import sys
@@ -47,7 +48,8 @@ MONTHLY_REQUIRED = {
     12: {1: 90, 2: 10, 3: 44, 4: 8, 5: 15, 6: 8},
 }
 
-NUM_TO_WORKS = {
+# フォールバック用ハードコード（training_content.json がない場合に使用）
+_FALLBACK_WORKS = {
     1: [
         ("掘削作業", ["マンホール布設", "汚水桝布設", "管布設", "水道掘削", "溝掘削", "法面掘削", "基礎掘削"]),
         ("土砂積込み作業", ["過積載防止", "周囲の確認", "積込み確認", "安全確認"]),
@@ -79,6 +81,38 @@ NUM_TO_WORKS = {
         ("安全衛生業務", ["安全訓練", "倉庫整理", "現場内清掃", "安全管理", "安全確認"]),
     ],
 }
+
+
+def _load_num_to_works() -> dict:
+    """training_content.json から NUM_TO_WORKS 形式を構築する。
+    ファイルが存在しない場合はハードコードのフォールバックを返す。
+    """
+    db_path = Path(__file__).parent / "training_content.json"
+    if not db_path.exists():
+        return _FALLBACK_WORKS
+
+    with open(db_path, encoding="utf-8") as f:
+        db = json.load(f)
+
+    entries = db.get("entries", {})
+    result = {}
+    for num in range(1, 7):
+        key = str(num)
+        works_dict = entries.get(key, {})
+        if not works_dict:
+            result[num] = _FALLBACK_WORKS.get(num, [])
+            continue
+        # 業務名を出現頻度順にソート
+        sorted_works = sorted(works_dict.items(), key=lambda x: -sum(x[1].values()))
+        result[num] = [
+            (w, [g for g, _ in sorted(gs.items(), key=lambda x: -x[1])])
+            for w, gs in sorted_works
+        ]
+
+    return result
+
+
+NUM_TO_WORKS = _load_num_to_works()
 
 
 # ── CSV 解析 ───────────────────────────────────────────────────
