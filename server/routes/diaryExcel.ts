@@ -212,29 +212,31 @@ function buildDiarySheet(
   ws.getRow(6).height = 15.0;
   ws.getRow(7).height = 12.75;
   ws.getRow(8).height = 16.5;
-  for (let r = 9; r <= 47; r++) ws.getRow(r).height = 17.25;
+  for (let r = 9; r <= 43; r++) ws.getRow(r).height = 17.25;
 
-  // ── 列幅
-  ws.getColumn("A").width = 10.4;
-  ws.getColumn("B").width = 12.0;
-  ws.getColumn("C").width = 6.9;
-  ws.getColumn("D").width = 6.0;
-  ws.getColumn("E").width = 10.6;
-  ws.getColumn("F").width = 9.0;
-  ws.getColumn("G").width = 15.4;
-  ws.getColumn("H").width = 12.0;
-  ws.getColumn("I").width = 6.0;
-  ws.getColumn("J").width = 28.0;
-  ws.getColumn("K").width = 6.9;
-  ws.getColumn("L").width = 6.0;
+  // ── 列幅（A4縦 有効幅≈172mm / ~93文字単位 をA〜H列で均等に使う）
+  ws.getColumn("A").width = 11;   // 日付
+  ws.getColumn("B").width = 16;   // 業務内容(B+C結合)
+  ws.getColumn("C").width = 8;
+  ws.getColumn("D").width = 5;    // 番号
+  ws.getColumn("E").width = 13;   // 指導内容(E+F+G結合)
+  ws.getColumn("F").width = 11;
+  ws.getColumn("G").width = 18;
+  ws.getColumn("H").width = 13;   // 指導者氏名
+  // 合計: 11+16+8+5+13+11+18+13 = 95文字単位 ≈ A4幅
 
-  // ── 印刷設定（A4・A〜H列・縦向き）
+  // ── 印刷設定（A4縦・A〜H列のみ・1ページ幅）
   ws.pageSetup.paperSize = 9; // A4
   ws.pageSetup.orientation = "portrait";
   ws.pageSetup.fitToPage = true;
   ws.pageSetup.fitToWidth = 1;
   ws.pageSetup.fitToHeight = 0;
-  ws.printArea = `A1:H${8 + daysInMonth(year, month) + 7}`; // ヘッダー+日別行+注意書き
+  ws.pageSetup.printArea = "A1:H43"; // H列まで・注意書き行43まで
+  ws.pageSetup.margins = {
+    left: 0.4, right: 0.4,
+    top: 0.5, bottom: 0.5,
+    header: 0.2, footer: 0.2,
+  };
 
   // ── ヘッダー行 1-2
   setCell(ws, "A1", "参考様式第4－2号別紙(規則第22号第1項第3号関係)", { size: 8 });
@@ -262,7 +264,6 @@ function buildDiarySheet(
   ws.mergeCells("E8:G8");
   setCell(ws, "E8", "技能実習生に対する指導の内容", { size: 9, hAlign: "center", border: true });
   setCell(ws, "H8", "指導者氏名", { size: 10, hAlign: "center", border: true });
-  setCell(ws, "J8", "従事させた業務", { size: 9, hAlign: "center" });
 
   // ── 番号シーケンス生成
   const alloc = allocateDays(workingDays.length, month);
@@ -319,11 +320,7 @@ function buildDiarySheet(
   setCell(ws, `A${notesRow + 2}`, "　　　　2　技能実習生に従事させた業務の欄の右欄は、技能実習計画の実習実施予定表(別記様式第1号第4面から第6面まで)", { size: 8 });
   setCell(ws, `A${notesRow + 3}`, "　　　　　　の技能実習の内容欄の番号を記載すること。", { size: 8 });
 
-  // ── 右側参照テーブル
-  for (const [row, iVal, jVal] of REF_TABLE) {
-    if (iVal) setCell(ws, `I${row}`, iVal, { size: 8, hAlign: "center" });
-    if (jVal) setCell(ws, `J${row}`, jVal, { size: 8 });
-  }
+  // 右側参照テーブルは印刷対象外のため書き込まない
 }
 
 // ─── DB から出勤データ取得 ──────────────────────────────────────
