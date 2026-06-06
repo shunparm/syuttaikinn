@@ -205,19 +205,20 @@ function buildDiarySheet(
   ws: ExcelJS.Worksheet, year: number, month: number,
   employeeName: string, workingDays: number[], supervisor: string, seed: number,
 ) {
-  // ── 行高さ（9ptフォント対応: データ行は折り返し2行分を確保）
-  ws.getRow(1).height = 12;
-  ws.getRow(2).height = 14;
-  ws.getRow(5).height = 14;
-  ws.getRow(6).height = 16;
-  ws.getRow(7).height = 14;
-  ws.getRow(8).height = 28;
-  for (let r = 9; r <= 39; r++) ws.getRow(r).height = 32;
-  for (let r = 40; r <= 43; r++) ws.getRow(r).height = 16;
+  // ── 行高さ（fitToHeightで自動縮小するため、自然な高さを設定）
+  ws.getRow(1).height = 10;
+  ws.getRow(2).height = 12;
+  ws.getRow(5).height = 12;
+  ws.getRow(6).height = 14;
+  ws.getRow(7).height = 12;
+  ws.getRow(8).height = 22;
+  for (let r = 9; r <= 39; r++) ws.getRow(r).height = 20; // 8pt×2行=16pt、余裕4pt
+  for (let r = 40; r <= 43; r++) ws.getRow(r).height = 12;
 
-  // ── 列幅（A4縦 有効幅≈190mm / 1.85mm per unit → 合計102unitでA4ぴったり）
-  // 最長業務名「建設機械の移送車両への積載及び移送作業」19字×3.2mm=61mm → B+C=36unit×1.85=67mm で収まる
-  ws.getColumn("A").width = 10;   // 日付
+  // ── 列幅（合計104unit）
+  // A幅を12にして"2026/12/31"(10文字)を収める
+  // B+C=36unitで最長業務名19字(8pt×2.8mm=53mm < 67mm)が1行に収まる
+  ws.getColumn("A").width = 12;   // 日付 yyyy/m/d
   ws.getColumn("B").width = 22;   // 業務名(B+C結合=36unit)
   ws.getColumn("C").width = 14;
   ws.getColumn("D").width = 5;    // 番号
@@ -225,14 +226,13 @@ function buildDiarySheet(
   ws.getColumn("F").width = 12;
   ws.getColumn("G").width = 13;
   ws.getColumn("H").width = 10;   // 指導者氏名
-  // 合計: 10+22+14+5+16+12+13+10 = 102unit ≈ 189mm（A4有効190mm内）
 
-  // ── 印刷設定（A4縦・A〜H列・等倍）
+  // ── 印刷設定（A4縦・A〜H列・幅と高さを1ページに収める）
   ws.pageSetup.paperSize = 9;
   ws.pageSetup.orientation = "portrait";
   ws.pageSetup.fitToPage = true;
   ws.pageSetup.fitToWidth = 1;
-  ws.pageSetup.fitToHeight = 0;
+  ws.pageSetup.fitToHeight = 1;   // 高さも1ページに収める
   ws.pageSetup.printArea = "A1:H43";
   ws.pageSetup.margins = {
     left: 0.4, right: 0.4,
@@ -284,8 +284,8 @@ function buildDiarySheet(
     const dateObj = new Date(year, month - 1, day);
     const aCell = ws.getRow(rowNum).getCell("A");
     aCell.value = dateObj;
-    aCell.numFmt = "m/d";
-    aCell.font = { name: FONT_NAME, size: 10 };
+    aCell.numFmt = "yyyy/m/d";
+    aCell.font = { name: FONT_NAME, size: 8 };
     aCell.alignment = { horizontal: "center", vertical: "center" };
     aCell.border = thinBorder();
 
@@ -303,12 +303,12 @@ function buildDiarySheet(
       const shidou = shidouList[workIdx[num] % Math.max(shidouList.length, 1)];
       workIdx[num]++;
 
-      setCell(ws, `B${rowNum}`, wname, { size: 9, hAlign: "center", wrap: true, border: true });
-      setCell(ws, `D${rowNum}`, num, { size: 9, hAlign: "center", border: true });
-      setCell(ws, `E${rowNum}`, shidou, { size: 9, hAlign: "center", border: true });
-      setCell(ws, `H${rowNum}`, supervisor, { size: 9, hAlign: "center", border: true });
+      setCell(ws, `B${rowNum}`, wname, { size: 8, hAlign: "center", wrap: true, border: true });
+      setCell(ws, `D${rowNum}`, num, { size: 8, hAlign: "center", border: true });
+      setCell(ws, `E${rowNum}`, shidou, { size: 8, hAlign: "center", border: true });
+      setCell(ws, `H${rowNum}`, supervisor, { size: 8, hAlign: "center", border: true });
     } else {
-      setCell(ws, `B${rowNum}`, "休み", { size: 9, hAlign: "center", border: true });
+      setCell(ws, `B${rowNum}`, "休み", { size: 8, hAlign: "center", border: true });
       setCell(ws, `D${rowNum}`, null, { border: true });
       setCell(ws, `E${rowNum}`, null, { border: true });
       setCell(ws, `H${rowNum}`, null, { border: true });
