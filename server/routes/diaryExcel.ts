@@ -205,33 +205,35 @@ function buildDiarySheet(
   ws: ExcelJS.Worksheet, year: number, month: number,
   employeeName: string, workingDays: number[], supervisor: string, seed: number,
 ) {
-  // ── 行高さ
-  ws.getRow(1).height = 10.5;
-  ws.getRow(2).height = 12.75;
-  ws.getRow(5).height = 12.75;
-  ws.getRow(6).height = 15.0;
-  ws.getRow(7).height = 12.75;
-  ws.getRow(8).height = 16.5;
-  for (let r = 9; r <= 43; r++) ws.getRow(r).height = 17.25;
+  // ── 行高さ（9ptフォント対応: データ行は折り返し2行分を確保）
+  ws.getRow(1).height = 12;
+  ws.getRow(2).height = 14;
+  ws.getRow(5).height = 14;
+  ws.getRow(6).height = 16;
+  ws.getRow(7).height = 14;
+  ws.getRow(8).height = 28;
+  for (let r = 9; r <= 39; r++) ws.getRow(r).height = 32;
+  for (let r = 40; r <= 43; r++) ws.getRow(r).height = 16;
 
-  // ── 列幅（A4縦 有効幅≈172mm / ~93文字単位 をA〜H列で均等に使う）
-  ws.getColumn("A").width = 11;   // 日付
-  ws.getColumn("B").width = 16;   // 業務内容(B+C結合)
-  ws.getColumn("C").width = 8;
+  // ── 列幅（A4縦 有効幅≈190mm / 1.85mm per unit → 合計102unitでA4ぴったり）
+  // 最長業務名「建設機械の移送車両への積載及び移送作業」19字×3.2mm=61mm → B+C=36unit×1.85=67mm で収まる
+  ws.getColumn("A").width = 10;   // 日付
+  ws.getColumn("B").width = 22;   // 業務名(B+C結合=36unit)
+  ws.getColumn("C").width = 14;
   ws.getColumn("D").width = 5;    // 番号
-  ws.getColumn("E").width = 13;   // 指導内容(E+F+G結合)
-  ws.getColumn("F").width = 11;
-  ws.getColumn("G").width = 18;
-  ws.getColumn("H").width = 13;   // 指導者氏名
-  // 合計: 11+16+8+5+13+11+18+13 = 95文字単位 ≈ A4幅
+  ws.getColumn("E").width = 16;   // 指導内容(E+F+G結合=41unit)
+  ws.getColumn("F").width = 12;
+  ws.getColumn("G").width = 13;
+  ws.getColumn("H").width = 10;   // 指導者氏名
+  // 合計: 10+22+14+5+16+12+13+10 = 102unit ≈ 189mm（A4有効190mm内）
 
-  // ── 印刷設定（A4縦・A〜H列のみ・1ページ幅）
-  ws.pageSetup.paperSize = 9; // A4
+  // ── 印刷設定（A4縦・A〜H列・等倍）
+  ws.pageSetup.paperSize = 9;
   ws.pageSetup.orientation = "portrait";
   ws.pageSetup.fitToPage = true;
   ws.pageSetup.fitToWidth = 1;
   ws.pageSetup.fitToHeight = 0;
-  ws.pageSetup.printArea = "A1:H43"; // H列まで・注意書き行43まで
+  ws.pageSetup.printArea = "A1:H43";
   ws.pageSetup.margins = {
     left: 0.4, right: 0.4,
     top: 0.5, bottom: 0.5,
@@ -301,12 +303,12 @@ function buildDiarySheet(
       const shidou = shidouList[workIdx[num] % Math.max(shidouList.length, 1)];
       workIdx[num]++;
 
-      setCell(ws, `B${rowNum}`, wname, { size: 6, hAlign: "center", wrap: true, border: true });
+      setCell(ws, `B${rowNum}`, wname, { size: 9, hAlign: "center", wrap: true, border: true });
       setCell(ws, `D${rowNum}`, num, { size: 9, hAlign: "center", border: true });
       setCell(ws, `E${rowNum}`, shidou, { size: 9, hAlign: "center", border: true });
       setCell(ws, `H${rowNum}`, supervisor, { size: 9, hAlign: "center", border: true });
     } else {
-      setCell(ws, `B${rowNum}`, "休み", { size: 6, hAlign: "center", border: true });
+      setCell(ws, `B${rowNum}`, "休み", { size: 9, hAlign: "center", border: true });
       setCell(ws, `D${rowNum}`, null, { border: true });
       setCell(ws, `E${rowNum}`, null, { border: true });
       setCell(ws, `H${rowNum}`, null, { border: true });
