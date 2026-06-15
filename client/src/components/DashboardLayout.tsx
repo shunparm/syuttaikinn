@@ -36,6 +36,7 @@ import {
   PanelLeft,
   Settings2,
   Shield,
+  TrendingUp,
   Users,
   UserCog,
 } from "lucide-react";
@@ -58,6 +59,7 @@ const workerMenuItems = [
 ];
 
 const adminMenuItems = [
+  { icon: TrendingUp, label: "月次サマリー", path: "/admin/summary" },
   { icon: Users, label: "作業員管理", path: "/admin/employees" },
   { icon: Building2, label: "現場管理", path: "/admin/sites" },
   { icon: Shield, label: "訂正申請管理", path: "/admin/corrections" },
