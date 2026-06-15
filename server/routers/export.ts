@@ -68,7 +68,134 @@ function computeWorkingMinutes(clockInStr: string | null | undefined, clockOutSt
   return calcWorkingMinutes(new Date(clockInStr), new Date(clockOutStr));
 }
 
+// ─── 月次サマリー ────────────────────────────────────────────────
 export const exportRouter = router({
+  getMonthlySummary: adminProcedure
+    .input(z.object({ year: z.number(), month: z.number() }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      const { year, month } = input;
+
+      // 月の開始・終了をJST基準のUTCに変換
+      const startUTC = new Date(Date.UTC(year, month - 1, 1) - JST_OFFSET);
+      const endUTC   = new Date(Date.UTC(year, month,     1) - JST_OFFSET);
+      const startDateStr = `${year}-${String(month).padStart(2,"0")}-01`;
+      const endDateStr   = new Date(Date.UTC(year, month, 0))
+        .toISOString().slice(0, 10);  // 月末日 YYYY-MM-DD
+
+      const [atRows, lvRows, employees] = await Promise.all([
+        db.select({
+          clockInTime: attendanceRecords.clockInTime,
+          clockOutTime: attendanceRecords.clockOutTime,
+          workingMinutes: attendanceRecords.workingMinutes,
+          employeeId: attendanceRecords.employeeId,
+          employeeName: employeeMaster.name,
+          employeeCode: employeeMaster.employeeId,
+          employmentType: employeeMaster.employmentType,
+        }).from(attendanceRecords)
+          .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
+          .where(and(
+            eq(attendanceRecords.status, "active"),
+            gte(attendanceRecords.clockInTime, startUTC.toISOString()),
+            lte(attendanceRecords.clockInTime, endUTC.toISOString()),
+          )),
+
+        db.select({
+          employeeId: leaveRequests.employeeId,
+          leaveType: leaveRequests.leaveType,
+          employeeName: employeeMaster.name,
+          employeeCode: employeeMaster.employeeId,
+          employmentType: employeeMaster.employmentType,
+        }).from(leaveRequests)
+          .innerJoin(employeeMaster, eq(leaveRequests.employeeId, employeeMaster.id))
+          .where(and(
+            eq(leaveRequests.status, "approved"),
+            gte(leaveRequests.requestDate, startDateStr),
+            lte(leaveRequests.requestDate, endDateStr),
+          )),
+
+        db.select({
+          id: employeeMaster.id,
+          name: employeeMaster.name,
+          employeeCode: employeeMaster.employeeId,
+          employmentType: employeeMaster.employmentType,
+          isActive: employeeMaster.isActive,
+        }).from(employeeMaster)
+          .where(eq(employeeMaster.isActive, true)),
+      ]);
+
+      type EmpSummary = {
+        employeeCode: string;
+        employeeName: string;
+        employmentType: string | null;
+        attendanceDays: Set<string>;
+        totalWorkingMinutes: number;
+        overtimeMinutes: number;
+        leaveCount: Record<string, number>;
+      };
+
+      const map = new Map<number, EmpSummary>();
+
+      const ensure = (empId: number, code: string, name: string, empType: string | null) => {
+        if (!map.has(empId))
+          map.set(empId, {
+            employeeCode: code,
+            employeeName: name,
+            employmentType: empType,
+            attendanceDays: new Set(),
+            totalWorkingMinutes: 0,
+            overtimeMinutes: 0,
+            leaveCount: { paid_leave: 0, substitute_holiday: 0, special_leave: 0, holiday_request: 0 },
+          });
+        return map.get(empId)!;
+      };
+
+      for (const r of atRows) {
+        const e = ensure(r.employeeId, r.employeeCode, r.employeeName, r.employmentType);
+        const wm = r.workingMinutes ?? computeWorkingMinutes(r.clockInTime, r.clockOutTime) ?? 0;
+        const dayStr = toJSTDateStr(new Date(r.clockInTime));
+        e.attendanceDays.add(dayStr);
+        e.totalWorkingMinutes += wm;
+        if (wm > 480) e.overtimeMinutes += wm - 480;
+      }
+
+      for (const lv of lvRows) {
+        const e = ensure(lv.employeeId, lv.employeeCode, lv.employeeName, lv.employmentType);
+        if (lv.leaveType in e.leaveCount) e.leaveCount[lv.leaveType]++;
+      }
+
+      // 在籍中だが出勤・休暇ゼロの社員も含める
+      for (const emp of employees) {
+        ensure(emp.id, emp.employeeCode, emp.name, emp.employmentType);
+      }
+
+      const summaries = Array.from(map.values()).map(e => ({
+        employeeCode:        e.employeeCode,
+        employeeName:        e.employeeName,
+        employmentType:      e.employmentType ?? "日給",
+        attendanceDays:      e.attendanceDays.size,
+        totalWorkingMinutes: e.totalWorkingMinutes,
+        overtimeMinutes:     e.overtimeMinutes,
+        paidLeaveDays:       e.leaveCount.paid_leave,
+        substituteDays:      e.leaveCount.substitute_holiday,
+        specialLeaveDays:    e.leaveCount.special_leave,
+        holidayRequestDays:  e.leaveCount.holiday_request,
+      })).sort((a, b) =>
+        a.employeeCode.localeCompare(b.employeeCode, undefined, { numeric: true })
+      );
+
+      const totalAttendanceDays  = summaries.reduce((s, e) => s + e.attendanceDays, 0);
+      const totalWorkingMinutes  = summaries.reduce((s, e) => s + e.totalWorkingMinutes, 0);
+      const totalLeaveDays       = summaries.reduce((s, e) => s + e.paidLeaveDays + e.substituteDays + e.specialLeaveDays, 0);
+      const activeEmployeeCount  = summaries.filter(e => e.attendanceDays > 0 || e.paidLeaveDays > 0 || e.substituteDays > 0).length;
+
+      return {
+        summaries,
+        totals: { totalAttendanceDays, totalWorkingMinutes, totalLeaveDays, activeEmployeeCount },
+      };
+    }),
+
+
   getExportData: adminProcedure
     .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
     .query(async ({ input }) => {
