@@ -60,11 +60,11 @@ const workerMenuItems = [
 
 const adminMenuItems = [
   { icon: TrendingUp, label: "月次サマリー", path: "/admin/summary" },
+  { icon: Download, label: "CSV出力", path: "/export" },
   { icon: Users, label: "作業員管理", path: "/admin/employees" },
   { icon: Building2, label: "現場管理", path: "/admin/sites" },
   { icon: Shield, label: "訂正申請管理", path: "/admin/corrections" },
   { icon: CalendarDays, label: "休暇申請管理", path: "/admin/leave-requests" },
-  { icon: Download, label: "CSV出力", path: "/export" },
   { icon: UserCog, label: "スタッフ管理", path: "/admin/users" },
 ];
 

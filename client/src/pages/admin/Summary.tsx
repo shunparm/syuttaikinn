@@ -15,13 +15,6 @@ function toJST(d: Date): Date {
   return new Date(d.getTime() + 9 * 60 * 60 * 1000);
 }
 
-const EMPLOYMENT_TYPE_COLOR: Record<string, string> = {
-  月給: "bg-blue-100 text-blue-800",
-  日給: "bg-emerald-100 text-emerald-800",
-  時給: "bg-amber-100 text-amber-800",
-  実習生: "bg-purple-100 text-purple-800",
-};
-
 export default function AdminSummary() {
   const now = toJST(new Date());
   const [year, setYear] = useState(now.getUTCFullYear());
@@ -143,13 +136,10 @@ export default function AdminSummary() {
                   <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">社員ID</th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">氏名</th>
-                    <th className="text-left px-4 py-3 font-medium whitespace-nowrap">雇用形態</th>
                     <th className="text-right px-4 py-3 font-medium whitespace-nowrap">出勤日数</th>
                     <th className="text-right px-4 py-3 font-medium whitespace-nowrap">総実働時間</th>
                     <th className="text-right px-4 py-3 font-medium whitespace-nowrap">残業時間</th>
                     <th className="text-right px-4 py-3 font-medium whitespace-nowrap">有給</th>
-                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">代休</th>
-                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">特休</th>
                     <th className="text-right px-4 py-3 font-medium whitespace-nowrap">休日希望</th>
                   </tr>
                 </thead>
@@ -163,13 +153,6 @@ export default function AdminSummary() {
                     >
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{s.employeeCode}</td>
                       <td className="px-4 py-3 font-medium">{s.employeeName}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          EMPLOYMENT_TYPE_COLOR[s.employmentType] ?? "bg-gray-100 text-gray-800"
-                        }`}>
-                          {s.employmentType}
-                        </span>
-                      </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {s.attendanceDays > 0 ? (
                           <span className="font-semibold">{s.attendanceDays}</span>
@@ -200,20 +183,6 @@ export default function AdminSummary() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        {s.substituteDays > 0 ? (
-                          <span className="text-blue-700 font-medium">{s.substituteDays}日</span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {s.specialLeaveDays > 0 ? (
-                          <span className="text-purple-700 font-medium">{s.specialLeaveDays}日</span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
                         {s.holidayRequestDays > 0 ? (
                           <span className="text-gray-700 font-medium">{s.holidayRequestDays}日</span>
                         ) : (
@@ -234,7 +203,7 @@ export default function AdminSummary() {
                 {data && data.summaries.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 bg-muted/30 font-semibold text-sm">
-                      <td colSpan={3} className="px-4 py-3 text-muted-foreground text-xs">合計</td>
+                      <td colSpan={2} className="px-4 py-3 text-muted-foreground text-xs">合計</td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {data.totals.totalAttendanceDays}日
                       </td>
@@ -246,12 +215,6 @@ export default function AdminSummary() {
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-green-700">
                         {data.summaries.reduce((s, e) => s + e.paidLeaveDays, 0)}日
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-blue-700">
-                        {data.summaries.reduce((s, e) => s + e.substituteDays, 0)}日
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-purple-700">
-                        {data.summaries.reduce((s, e) => s + e.specialLeaveDays, 0)}日
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {data.summaries.reduce((s, e) => s + e.holidayRequestDays, 0)}日
