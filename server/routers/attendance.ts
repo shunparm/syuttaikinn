@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eq, and, gte, lte, isNull, desc } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
@@ -37,7 +38,7 @@ export const attendanceRouter = router({
       const existing = await db.select().from(attendanceRecords).where(
         and(eq(attendanceRecords.employeeId, input.employeeId), eq(attendanceRecords.status, "active"), isNull(attendanceRecords.clockOutTime))
       ).limit(1);
-      if (existing.length > 0) throw new Error("既に出勤中です");
+      if (existing.length > 0) throw new TRPCError({ code: "CONFLICT", message: "既に出勤中です" });
       const now = iso(new Date());
       await db.insert(attendanceRecords).values({
         employeeId: input.employeeId,
@@ -61,7 +62,7 @@ export const attendanceRouter = router({
     .mutation(async ({ input }) => {
       const db = getDb();
       const rows = await db.select().from(attendanceRecords).where(eq(attendanceRecords.id, input.attendanceRecordId)).limit(1);
-      if (rows.length === 0) throw new Error("記録が見つかりません");
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "記録が見つかりません" });
       const record = rows[0];
       const nowDate = new Date();
       const workingMinutes = calcWorkingMinutes(record.clockInTime, nowDate);

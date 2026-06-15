@@ -85,8 +85,8 @@ export default function Export() {
       return "-";
     }
   };
-  const { data: csvData, isLoading: csvLoading } = trpc.export.generateCsvString.useQuery(queryParams);
-  const { data: payrollCsvData, isLoading: payrollCsvLoading } = trpc.export.generatePayrollCsvString.useQuery(queryParams);
+  const { data: csvData, isLoading: csvLoading, isError: csvError } = trpc.export.generateCsvString.useQuery(queryParams);
+  const { data: payrollCsvData, isLoading: payrollCsvLoading, isError: payrollCsvError } = trpc.export.generatePayrollCsvString.useQuery(queryParams);
 
   const handleDownload = () => {
     if (!csvData?.csv) {
@@ -333,7 +333,8 @@ export default function Export() {
                 <Download className="h-4 w-4" />
                 出退勤CSV
               </Button>
-              <p className="text-xs text-muted-foreground">作業記録の確認・保管用（全項目含む）</p>
+              {csvError && <p className="text-xs text-destructive">データの取得に失敗しました</p>}
+              {!csvError && <p className="text-xs text-muted-foreground">作業記録の確認・保管用（全項目含む）</p>}
             </div>
             <div className="flex flex-col gap-1">
               <Button
@@ -345,7 +346,8 @@ export default function Export() {
                 <Calculator className="h-4 w-4" />
                 給与計算用CSV
               </Button>
-              <p className="text-xs text-muted-foreground">給与計算システムの「出退勤入力」シートに貼り付け可能</p>
+              {payrollCsvError && <p className="text-xs text-destructive">データの取得に失敗しました</p>}
+              {!payrollCsvError && <p className="text-xs text-muted-foreground">給与計算システムの「出退勤入力」シートに貼り付け可能</p>}
             </div>
           </div>
         </CardContent>

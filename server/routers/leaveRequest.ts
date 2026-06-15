@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { leaveRequests, employeeMaster } from "../../drizzle/schema";
@@ -45,7 +46,7 @@ export const leaveRequestRouter = router({
         )
         .limit(1);
       if (existing.length > 0) {
-        throw new Error("同じ日付・種別の申請が既に審査中です");
+        throw new TRPCError({ code: "CONFLICT", message: "同じ日付・種別の申請が既に審査中です" });
       }
       await db.insert(leaveRequests).values({
         employeeId: input.employeeId,
@@ -103,8 +104,8 @@ export const leaveRequestRouter = router({
         .from(leaveRequests)
         .where(eq(leaveRequests.id, input.id))
         .limit(1);
-      if (rows.length === 0) throw new Error("申請が見つかりません");
-      if (rows[0].status !== "pending") throw new Error("この申請は既に処理済みです");
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "申請が見つかりません" });
+      if (rows[0].status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "この申請は既に処理済みです" });
       const now = iso(new Date());
       await db
         .update(leaveRequests)
@@ -130,8 +131,8 @@ export const leaveRequestRouter = router({
         .from(leaveRequests)
         .where(eq(leaveRequests.id, input.id))
         .limit(1);
-      if (rows.length === 0) throw new Error("申請が見つかりません");
-      if (rows[0].status !== "pending") throw new Error("この申請は既に処理済みです");
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "申請が見つかりません" });
+      if (rows[0].status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "この申請は既に処理済みです" });
       const now = iso(new Date());
       await db
         .update(leaveRequests)
@@ -157,8 +158,8 @@ export const leaveRequestRouter = router({
         .from(leaveRequests)
         .where(eq(leaveRequests.id, input.id))
         .limit(1);
-      if (rows.length === 0) throw new Error("申請が見つかりません");
-      if (rows[0].status === "pending") throw new Error("審査中の申請は削除できません");
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "申請が見つかりません" });
+      if (rows[0].status === "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "審査中の申請は削除できません" });
       await db.delete(leaveRequests).where(eq(leaveRequests.id, input.id));
       return { success: true };
     }),

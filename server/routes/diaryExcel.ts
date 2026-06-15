@@ -7,10 +7,8 @@ import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster, leaveRequests } from "../../drizzle/schema";
 
 // ─── 対象実習生（氏名に含まれるキーワード）───────────────────────
-const TRAINEE_KEYWORDS = ["アルフィアン", "ヨザ", "リズキ", "ディマス"];
-
-function isTrainee(name: string): boolean {
-  return TRAINEE_KEYWORDS.some(k => name.includes(k));
+function isTrainee(employmentType: string | null | undefined): boolean {
+  return employmentType === "実習生";
 }
 
 // ─── JST ユーティリティ ─────────────────────────────────────────
@@ -334,6 +332,7 @@ async function fetchAttendance(start: Date, end: Date) {
       clockInTime: attendanceRecords.clockInTime,
       employeeName: employeeMaster.name,
       employeeCode: employeeMaster.employeeId,
+      employmentType: employeeMaster.employmentType,
     })
       .from(attendanceRecords)
       .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
@@ -349,6 +348,7 @@ async function fetchAttendance(start: Date, end: Date) {
       leaveType: leaveRequests.leaveType,
       employeeName: employeeMaster.name,
       employeeCode: employeeMaster.employeeId,
+      employmentType: employeeMaster.employmentType,
     })
       .from(leaveRequests)
       .innerJoin(employeeMaster, eq(leaveRequests.employeeId, employeeMaster.id))
@@ -363,7 +363,7 @@ async function fetchAttendance(start: Date, end: Date) {
   const empMap: EmpMonths = new Map();
 
   for (const r of rows) {
-    if (!isTrainee(r.employeeName)) continue;
+    if (!isTrainee(r.employmentType)) continue;
     const jst = toJSTDate(r.clockInTime);
     const ym = `${jst.getUTCFullYear()}-${jst.getUTCMonth() + 1}`;
     const day = jst.getUTCDate();
@@ -374,7 +374,7 @@ async function fetchAttendance(start: Date, end: Date) {
   }
 
   for (const lr of leaveRows) {
-    if (!isTrainee(lr.employeeName) || lr.leaveType !== "paid_leave") continue;
+    if (!isTrainee(lr.employmentType) || lr.leaveType !== "paid_leave") continue;
     const [y, m, d] = lr.requestDate.split("-").map(Number);
     const ym = `${y}-${m}`;
     if (!empMap.has(lr.employeeCode)) empMap.set(lr.employeeCode, { name: lr.employeeName, months: new Map() });

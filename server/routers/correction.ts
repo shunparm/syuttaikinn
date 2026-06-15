@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eq, and, desc, ne, notInArray } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { getDb, pool } from "../db";
 import { correctionRequests, attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
@@ -101,14 +102,14 @@ export const correctionRouter = router({
 
       if (input.correctionType === "new_record") {
         if (!input.newClockInTime || !input.newClockOutTime || !input.newSiteId) {
-          throw new Error("新規記録追加には出勤時刻・退勤時刻・現場が必要です");
+          throw new TRPCError({ code: "BAD_REQUEST", message: "新規記録追加には出勤時刻・退勤時刻・現場が必要です" });
         }
         await ensureNewRecordMigration();
       } else {
-        if (!input.attendanceRecordId) throw new Error("対象記録を選択してください");
+        if (!input.attendanceRecordId) throw new TRPCError({ code: "BAD_REQUEST", message: "対象記録を選択してください" });
         const existing = await db.select().from(correctionRequests)
           .where(and(eq(correctionRequests.attendanceRecordId, input.attendanceRecordId), eq(correctionRequests.status, "pending"))).limit(1);
-        if (existing.length > 0) throw new Error("この記録には既に申請中の訂正申請があります");
+        if (existing.length > 0) throw new TRPCError({ code: "CONFLICT", message: "この記録には既に申請中の訂正申請があります" });
       }
 
       const now = iso(new Date());
@@ -174,14 +175,14 @@ export const correctionRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
       const rows = await db.select().from(correctionRequests).where(eq(correctionRequests.id, input.id)).limit(1);
-      if (rows.length === 0) throw new Error("申請が見つかりません");
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "申請が見つかりません" });
       const req = rows[0];
-      if (req.status !== "pending") throw new Error("この申請は既に処理済みです");
+      if (req.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "この申請は既に処理済みです" });
       const now = iso(new Date());
       await db.update(correctionRequests).set({ status: "approved", approvedBy: ctx.user.id, approvedByName: ctx.user.name ?? null, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
 
       if (req.correctionType === "new_record") {
-        if (!req.newClockInTime || !req.newSiteId) throw new Error("新規記録に必要な情報が不足しています");
+        if (!req.newClockInTime || !req.newSiteId) throw new TRPCError({ code: "BAD_REQUEST", message: "新規記録に必要な情報が不足しています" });
         const workingMinutes = req.newClockOutTime
           ? calcWorkingMinutes(req.newClockInTime, req.newClockOutTime)
           : null;
@@ -226,8 +227,8 @@ export const correctionRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
       const rows = await db.select().from(correctionRequests).where(eq(correctionRequests.id, input.id)).limit(1);
-      if (rows.length === 0) throw new Error("申請が見つかりません");
-      if (rows[0].status !== "pending") throw new Error("この申請は既に処理済みです");
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "申請が見つかりません" });
+      if (rows[0].status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "この申請は既に処理済みです" });
       const now = iso(new Date());
       await db.update(correctionRequests).set({ status: "rejected", approvedBy: ctx.user.id, approvedByName: ctx.user.name ?? null, approvedAt: now, updatedAt: now }).where(eq(correctionRequests.id, input.id));
       return { success: true };
@@ -239,8 +240,8 @@ export const correctionRouter = router({
     .mutation(async ({ input }) => {
       const db = getDb();
       const rows = await db.select().from(correctionRequests).where(eq(correctionRequests.id, input.id)).limit(1);
-      if (rows.length === 0) throw new Error('申請が見つかりません');
-      if (rows[0].status === 'pending') throw new Error('審査中の申請は削除できません');
+      if (rows.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: '申請が見つかりません' });
+      if (rows[0].status === 'pending') throw new TRPCError({ code: 'BAD_REQUEST', message: '審査中の申請は削除できません' });
       await db.delete(correctionRequests).where(eq(correctionRequests.id, input.id));
       return { success: true };
     }),
