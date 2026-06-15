@@ -64,8 +64,9 @@ function calcBasicPay(
 // ─── 月次給与集計 ────────────────────────────────────────────────
 async function calcMonthly(year: number, month: number, employeeId?: number) {
   const db = getDb();
+  const lastDay = new Date(year, month, 0).getDate(); // その月の末日
   const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endStr   = `${year}-${String(month).padStart(2, "0")}-31`;
+  const endStr   = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
   const conditions: any[] = [
     eq(attendanceRecords.status, "active"),

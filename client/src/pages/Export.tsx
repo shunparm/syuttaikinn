@@ -61,6 +61,10 @@ export default function Export() {
   }, [selectedEmployeeIds, employees]);
 
   const applyFilter = () => {
+    if (startDate > endDate) {
+      toast.error("開始日は終了日より前の日付を指定してください");
+      return;
+    }
     setQueryParams({
       startDate: new Date(startDate + "T00:00:00+09:00"),
       endDate:   new Date(endDate   + "T23:59:59+09:00"),

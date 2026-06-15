@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, Clock, Filter, Search, Trash2, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 10;
 
@@ -83,6 +84,10 @@ export default function Records() {
   };
 
   const handleSearch = () => {
+    if (startDate > endDate) {
+      toast.error("開始日は終了日より前の日付を指定してください");
+      return;
+    }
     setQueryParams({
       startDate: new Date(startDate + "T00:00:00+09:00"),
       endDate:   new Date(endDate   + "T23:59:59+09:00"),
