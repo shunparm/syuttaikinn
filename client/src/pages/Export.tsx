@@ -4,15 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, Users, Clock, Calendar, BookOpen, Calculator } from "lucide-react";
+import { Download, FileSpreadsheet, Users, Clock, Calendar, BookOpen, Calculator, ChevronDown, Check } from "lucide-react";
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   paid_leave: "有給休暇",
@@ -35,18 +30,43 @@ export default function Export() {
 
   const [startDate, setStartDate] = useState(firstOfMonthJSTStr);
   const [endDate, setEndDate] = useState(todayJSTStr);
-  const [filterEmployeeId, setFilterEmployeeId] = useState<string>("all");
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
   const [supervisor, setSupervisor] = useState("中原");
   const [diaryLoading, setDiaryLoading] = useState(false);
   const [queryParams, setQueryParams] = useState({
     startDate: new Date(firstOfMonthJSTStr + "T00:00:00+09:00"),
     endDate:   new Date(todayJSTStr + "T23:59:59+09:00"),
-    employeeId: undefined as number | undefined,
+    employeeIds: undefined as number[] | undefined,
   });
 
   const { data: employees } = trpc.master.listEmployees.useQuery();
   const { data: allEmployees } = trpc.master.listEmployees.useQuery({});
   const { data: exportData, isLoading } = trpc.export.getExportData.useQuery(queryParams);
+
+  const toggleEmployee = (id: number) => {
+    setSelectedEmployeeIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const selectAll = () => setSelectedEmployeeIds([]);
+
+  const employeeFilterLabel = useMemo(() => {
+    if (!selectedEmployeeIds.length) return "すべての作業員";
+    if (!employees) return `${selectedEmployeeIds.length}名選択中`;
+    const names = selectedEmployeeIds
+      .map(id => employees.find(e => e.id === id)?.name ?? "")
+      .filter(Boolean);
+    return names.length <= 2 ? names.join("、") : `${names[0]}ほか${names.length - 1}名`;
+  }, [selectedEmployeeIds, employees]);
+
+  const applyFilter = () => {
+    setQueryParams({
+      startDate: new Date(startDate + "T00:00:00+09:00"),
+      endDate:   new Date(endDate   + "T23:59:59+09:00"),
+      employeeIds: selectedEmployeeIds.length ? selectedEmployeeIds : undefined,
+    });
+  };
 
   // 同行作業員ID→名前変換ヘルパー
   const resolveCompanionNames = (companionJson: string | null | undefined): string => {
@@ -224,7 +244,7 @@ export default function Export() {
           <CardTitle className="text-base">出力条件</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
@@ -254,19 +274,47 @@ export default function Export() {
                 <Users className="h-3.5 w-3.5" />
                 作業員
               </Label>
-              <Select value={filterEmployeeId} onValueChange={setFilterEmployeeId}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="すべて" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">すべての作業員</SelectItem>
-                  {employees?.map((e) => (
-                    <SelectItem key={e.id} value={String(e.id)}>
-                      {e.name}
-                    </SelectItem>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-10 w-full justify-between font-normal text-sm"
+                  >
+                    <span className="truncate">{employeeFilterLabel}</span>
+                    <ChevronDown className="h-4 w-4 ml-2 shrink-0 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="start">
+                  <button
+                    onClick={selectAll}
+                    className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted text-sm"
+                  >
+                    <div className={`flex h-4 w-4 items-center justify-center rounded border ${!selectedEmployeeIds.length ? "bg-primary border-primary" : "border-input"}`}>
+                      {!selectedEmployeeIds.length && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                    すべての作業員
+                  </button>
+                  <div className="my-1 h-px bg-border" />
+                  {employees?.map((emp) => (
+                    <label
+                      key={emp.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={selectedEmployeeIds.includes(emp.id)}
+                        onCheckedChange={() => toggleEmployee(emp.id)}
+                      />
+                      {emp.name}
+                    </label>
                   ))}
-                </SelectContent>
-              </Select>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex items-end">
+              <Button onClick={applyFilter} className="h-10 w-full gap-2">
+                <Check className="h-4 w-4" />
+                適用
+              </Button>
             </div>
           </div>
           <div className="flex flex-wrap gap-6 mt-4">

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster, leaveRequests } from "../../drizzle/schema";
@@ -197,23 +197,24 @@ export const exportRouter = router({
 
 
   getExportData: adminProcedure
-    .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
+    .input(z.object({ startDate: z.date(), endDate: z.date(), employeeIds: z.number().array().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
       const start = input.startDate;
       const end   = input.endDate;
       const startDateStr = toJSTDateStr(start);
       const endDateStr   = toJSTDateStr(end);
+      const ids = input.employeeIds?.length ? input.employeeIds : undefined;
 
       const atConditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
-      if (input.employeeId) atConditions.push(eq(attendanceRecords.employeeId, input.employeeId));
+      if (ids) atConditions.push(inArray(attendanceRecords.employeeId, ids));
 
       const leaveConditions: any[] = [
         eq(leaveRequests.status, "approved"),
         gte(leaveRequests.requestDate, startDateStr),
         lte(leaveRequests.requestDate, endDateStr),
       ];
-      if (input.employeeId) leaveConditions.push(eq(leaveRequests.employeeId, input.employeeId));
+      if (ids) leaveConditions.push(inArray(leaveRequests.employeeId, ids));
 
       const [rows, leaveRows] = await Promise.all([
         db.select({
@@ -282,23 +283,24 @@ export const exportRouter = router({
     }),
 
   generateCsvString: adminProcedure
-    .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
+    .input(z.object({ startDate: z.date(), endDate: z.date(), employeeIds: z.number().array().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
       const start = input.startDate;
       const end   = input.endDate;
       const startDateStr = toJSTDateStr(start);
       const endDateStr   = toJSTDateStr(end);
+      const ids = input.employeeIds?.length ? input.employeeIds : undefined;
 
       const atConditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
-      if (input.employeeId) atConditions.push(eq(attendanceRecords.employeeId, input.employeeId));
+      if (ids) atConditions.push(inArray(attendanceRecords.employeeId, ids));
 
       const leaveConditions: any[] = [
         eq(leaveRequests.status, "approved"),
         gte(leaveRequests.requestDate, startDateStr),
         lte(leaveRequests.requestDate, endDateStr),
       ];
-      if (input.employeeId) leaveConditions.push(eq(leaveRequests.employeeId, input.employeeId));
+      if (ids) leaveConditions.push(inArray(leaveRequests.employeeId, ids));
 
       const [rows, leaveRows, allEmpRows] = await Promise.all([
         db.select({
@@ -370,23 +372,24 @@ export const exportRouter = router({
 
   // 給与計算システム用CSV（Sheet4：出退勤入力 形式）
   generatePayrollCsvString: adminProcedure
-    .input(z.object({ startDate: z.date(), endDate: z.date(), employeeId: z.number().optional() }))
+    .input(z.object({ startDate: z.date(), endDate: z.date(), employeeIds: z.number().array().optional() }))
     .query(async ({ input }) => {
       const db = getDb();
       const start = input.startDate;
       const end   = input.endDate;
       const startDateStr = toJSTDateStr(start);
       const endDateStr   = toJSTDateStr(end);
+      const ids = input.employeeIds?.length ? input.employeeIds : undefined;
 
       const atConditions: any[] = [eq(attendanceRecords.status, "active"), gte(attendanceRecords.clockInTime, iso(start)), lte(attendanceRecords.clockInTime, iso(end))];
-      if (input.employeeId) atConditions.push(eq(attendanceRecords.employeeId, input.employeeId));
+      if (ids) atConditions.push(inArray(attendanceRecords.employeeId, ids));
 
       const leaveConditions: any[] = [
         eq(leaveRequests.status, "approved"),
         gte(leaveRequests.requestDate, startDateStr),
         lte(leaveRequests.requestDate, endDateStr),
       ];
-      if (input.employeeId) leaveConditions.push(eq(leaveRequests.employeeId, input.employeeId));
+      if (ids) leaveConditions.push(inArray(leaveRequests.employeeId, ids));
 
       const [rows, leaveRows] = await Promise.all([
         db.select({
