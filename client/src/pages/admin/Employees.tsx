@@ -33,11 +33,13 @@ type Employee = {
   nameKana?: string;
   role: string;
   status: string;
+  employmentType?: string;
   createdAt: string;
   updatedAt: string;
 };
 
 type RoleValue = "worker" | "staff" | "admin" | "応援";
+type EmploymentTypeValue = "月給" | "日給" | "時給" | "実習生";
 
 export default function AdminEmployees() {
   const { user } = useAuth();
@@ -46,8 +48,8 @@ export default function AdminEmployees() {
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
   const [page, setPage] = useState(1);
-  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; role: RoleValue; password: string }>({
-    employeeId: "", name: "", nameKana: "", role: "worker", password: "",
+  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; role: RoleValue; employmentType: EmploymentTypeValue; password: string }>({
+    employeeId: "", name: "", nameKana: "", role: "worker", employmentType: "日給", password: "",
   });
 
   // 削除確認ダイアログ用
@@ -100,7 +102,7 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", nameKana: "", role: "worker", password: "" });
+    setForm({ employeeId: "", name: "", nameKana: "", role: "worker", employmentType: "日給", password: "" });
     setDialogOpen(true);
   };
 
@@ -111,6 +113,7 @@ export default function AdminEmployees() {
       name: emp.name,
       nameKana: emp.nameKana ?? "",
       role: (["worker", "staff", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
+      employmentType: (["月給", "日給", "時給", "実習生"].includes(emp.employmentType ?? "") ? emp.employmentType : "日給") as EmploymentTypeValue,
       password: "",
     });
     setDialogOpen(true);
@@ -133,6 +136,7 @@ export default function AdminEmployees() {
         name: form.name,
         nameKana: form.nameKana || undefined,
         role: form.role,
+        employmentType: form.employmentType,
         password: form.password || undefined,
       });
     } else {
@@ -141,6 +145,7 @@ export default function AdminEmployees() {
         name: form.name,
         nameKana: form.nameKana || undefined,
         role: form.role,
+        employmentType: form.employmentType,
         password: form.password || undefined,
       });
     }
@@ -212,6 +217,7 @@ export default function AdminEmployees() {
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">従業員ID</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">氏名</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">役割</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">雇用形態</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">ステータス</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">登録日</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground">操作</th>
@@ -225,6 +231,16 @@ export default function AdminEmployees() {
                       <td className="py-3 px-4">
                         <Badge variant="secondary" className={`text-xs border-0 ${roleBadgeClass(emp.role)}`}>
                           {roleLabel(emp.role)}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant="secondary" className={`text-xs border-0 ${
+                          emp.employmentType === "実習生" ? "bg-purple-100 text-purple-700" :
+                          emp.employmentType === "月給"  ? "bg-blue-100 text-blue-700" :
+                          emp.employmentType === "時給"  ? "bg-amber-100 text-amber-700" :
+                          "bg-emerald-100 text-emerald-700"
+                        }`}>
+                          {emp.employmentType ?? "日給"}
                         </Badge>
                       </td>
                       <td className="py-3 px-4">
@@ -347,6 +363,23 @@ export default function AdminEmployees() {
                   <SelectItem value="staff">事務</SelectItem>
                   <SelectItem value="admin">管理者</SelectItem>
                   <SelectItem value="応援">応援</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">雇用形態</Label>
+              <Select
+                value={form.employmentType}
+                onValueChange={(v) => setForm({ ...form, employmentType: v as EmploymentTypeValue })}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="日給">日給</SelectItem>
+                  <SelectItem value="月給">月給</SelectItem>
+                  <SelectItem value="時給">時給</SelectItem>
+                  <SelectItem value="実習生">実習生</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -24,6 +24,7 @@ export const masterRouter = router({
       password: z.string().min(4).optional(),
       role: z.enum(["worker", "staff", "admin", "応援"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
+      employmentType: z.enum(["月給", "日給", "時給", "実習生"]).default("日給"),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -58,6 +59,7 @@ export const masterRouter = router({
       password: z.string().min(4).optional(),
       role: z.enum(["worker", "staff", "admin", "応援"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
+      employmentType: z.enum(["月給", "日給", "時給", "実習生"]).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
