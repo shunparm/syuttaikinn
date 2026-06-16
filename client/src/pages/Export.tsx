@@ -182,19 +182,53 @@ export default function Export() {
           <p className="text-sm text-muted-foreground mb-4">
             有給休暇申請を承認するたびに自動更新されるExcel管理簿をダウンロードします。
           </p>
-          <Button
-            onClick={() => {
-              const link = document.createElement("a");
-              link.href = "/api/export/paid-leave-excel";
-              link.download = "有給休暇管理簿.xlsx";
-              link.click();
-            }}
-            variant="outline"
-            className="gap-2 border-green-500 text-green-700 hover:bg-green-50"
-          >
-            <Download className="h-4 w-4" />
-            有給休暇管理簿をダウンロード
-          </Button>
+          <div className="flex flex-wrap gap-3 items-center">
+            <Button
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = "/api/export/paid-leave-excel";
+                link.download = "有給休暇管理簿.xlsx";
+                link.click();
+              }}
+              variant="outline"
+              className="gap-2 border-green-500 text-green-700 hover:bg-green-50"
+            >
+              <Download className="h-4 w-4" />
+              有給休暇管理簿をダウンロード
+            </Button>
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = async (ev) => {
+                    const base64 = (ev.target?.result as string).split(",")[1];
+                    const res = await fetch("/api/admin/paid-leave-excel", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ fileData: base64 }),
+                    });
+                    if (res.ok) {
+                      toast.success("有給管理簿を更新しました");
+                    } else {
+                      toast.error("アップロードに失敗しました");
+                    }
+                    e.target.value = "";
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+              <span className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-input rounded-md hover:bg-accent cursor-pointer">
+                <FileSpreadsheet className="h-4 w-4" />
+                管理簿Excelを差し替え
+              </span>
+            </label>
+          </div>
         </CardContent>
       </Card>
 

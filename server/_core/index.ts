@@ -9,11 +9,14 @@ import { serveStatic, setupVite } from "./vite";
 import { initDb } from "../db";
 import { startNotificationScheduler } from "../notificationScheduler";
 import { handleDiaryExcelDownload } from "../routes/diaryExcel";
-import { handlePaidLeaveExcelDownload, handlePaidLeaveExcelUpload } from "../routes/paidLeaveExcel";
+import { handlePaidLeaveExcelDownload, handlePaidLeaveExcelUpload, seedPaidLeaveExcel } from "../routes/paidLeaveExcel";
 
 async function startServer() {
   // DB初期化（テーブル作成）
   await initDb();
+
+  // 有給管理簿をDBへシード（初回のみ）
+  await seedPaidLeaveExcel();
 
   // VAPIDキー確認ログ
   const vapidPub = process.env.VAPID_PUBLIC_KEY;
