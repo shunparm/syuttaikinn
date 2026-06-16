@@ -9,6 +9,7 @@ import { serveStatic, setupVite } from "./vite";
 import { initDb } from "../db";
 import { startNotificationScheduler } from "../notificationScheduler";
 import { handleDiaryExcelDownload } from "../routes/diaryExcel";
+import { handlePaidLeaveExcelDownload, handlePaidLeaveExcelUpload } from "../routes/paidLeaveExcel";
 
 async function startServer() {
   // DB初期化（テーブル作成）
@@ -51,6 +52,10 @@ async function startServer() {
 
   // 日誌Excel生成ダウンロード
   app.get("/api/export/diary-excel", handleDiaryExcelDownload);
+
+  // 有給休暇管理簿Excel ダウンロード・アップロード
+  app.get("/api/export/paid-leave-excel", handlePaidLeaveExcelDownload);
+  app.post("/api/admin/paid-leave-excel", handlePaidLeaveExcelUpload);
 
   // tRPC API
   app.use(
