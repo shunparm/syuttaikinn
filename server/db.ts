@@ -172,6 +172,11 @@ export async function initDb() {
         "createdAt" TEXT NOT NULL DEFAULT now()::text,
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
       );
+      CREATE TABLE IF NOT EXISTS system_files (
+        key TEXT PRIMARY KEY,
+        data BYTEA NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT now()::text
+      );
     `);
 
     // 給与IDを一元化したため不要になったカラムを削除
