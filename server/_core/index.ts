@@ -57,7 +57,7 @@ async function startServer() {
   app.get("/api/export/diary-excel", handleDiaryExcelDownload);
 
   // 有給休暇管理簿Excel ダウンロード
-  app.get("/api/export/paid-leave-excel", handlePaidLeaveExcelDownload);
+  app.get("/api/export/paid-leave-excel", (req, res) => handlePaidLeaveExcelDownload(req, res));
 
   // tRPC API
   app.use(

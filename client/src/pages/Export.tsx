@@ -349,6 +349,23 @@ export default function Export() {
               {payrollCsvError && <p className="text-xs text-destructive">データの取得に失敗しました</p>}
               {!payrollCsvError && <p className="text-xs text-muted-foreground">給与計算システムの「出退勤入力」シートに貼り付け可能</p>}
             </div>
+            <div className="flex flex-col gap-1">
+              <Button
+                onClick={() => {
+                  const link = document.createElement("a");
+                  link.href = "/api/export/paid-leave-excel";
+                  link.download = "有給休暇管理簿.xlsx";
+                  link.click();
+                }}
+                size="sm"
+                variant="outline"
+                className="gap-2 border-green-500 text-green-700 hover:bg-green-50"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                有給休暇管理簿
+              </Button>
+              <p className="text-xs text-muted-foreground">承認済み有給が自動入力されたExcel</p>
+            </div>
           </div>
         </CardContent>
       </Card>
