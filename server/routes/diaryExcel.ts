@@ -201,7 +201,7 @@ function daysInMonth(year: number, month: number): number {
 
 function buildDiarySheet(
   ws: ExcelJS.Worksheet, year: number, month: number,
-  employeeName: string, workingDays: number[], supervisor: string, seed: number,
+  employeeName: string, workingDays: number[], paidLeaveDays: number[], supervisor: string, seed: number,
 ) {
   // ── 行高さ（fitToHeightで自動縮小するため、自然な高さを設定）
   ws.getRow(1).height = 10;
@@ -292,7 +292,12 @@ function buildDiarySheet(
     // E:G 結合
     ws.mergeCells(`E${rowNum}:G${rowNum}`);
 
-    if (workingDays.includes(day)) {
+    if (paidLeaveDays.includes(day)) {
+      setCell(ws, `B${rowNum}`, "有給休暇", { size: 8, hAlign: "center", border: true });
+      setCell(ws, `D${rowNum}`, null, { border: true });
+      setCell(ws, `E${rowNum}`, null, { border: true });
+      setCell(ws, `H${rowNum}`, null, { border: true });
+    } else if (workingDays.includes(day)) {
       const seqIdx = workingDays.indexOf(day);
       const num = numSeq[seqIdx] ?? 1;
       const works = NUM_TO_WORKS[num] ?? [];
@@ -359,28 +364,33 @@ async function fetchAttendance(start: Date, end: Date) {
       )),
   ]);
 
-  type EmpMonths = Map<string, { name: string; months: Map<string, Set<number>> }>;
+  type EmpMonths = Map<string, { name: string; months: Map<string, { workDays: Set<number>; paidLeaveDays: Set<number> }> }>;
   const empMap: EmpMonths = new Map();
+
+  const ensureEmp = (code: string, name: string) => {
+    if (!empMap.has(code)) empMap.set(code, { name, months: new Map() });
+    return empMap.get(code)!;
+  };
+  const ensureMonth = (emp: ReturnType<typeof ensureEmp>, ym: string) => {
+    if (!emp.months.has(ym)) emp.months.set(ym, { workDays: new Set(), paidLeaveDays: new Set() });
+    return emp.months.get(ym)!;
+  };
 
   for (const r of rows) {
     if (!isTrainee(r.employmentType)) continue;
     const jst = toJSTDate(r.clockInTime);
     const ym = `${jst.getUTCFullYear()}-${jst.getUTCMonth() + 1}`;
     const day = jst.getUTCDate();
-    if (!empMap.has(r.employeeCode)) empMap.set(r.employeeCode, { name: r.employeeName, months: new Map() });
-    const emp = empMap.get(r.employeeCode)!;
-    if (!emp.months.has(ym)) emp.months.set(ym, new Set());
-    emp.months.get(ym)!.add(day);
+    const emp = ensureEmp(r.employeeCode, r.employeeName);
+    ensureMonth(emp, ym).workDays.add(day);
   }
 
   for (const lr of leaveRows) {
     if (!isTrainee(lr.employmentType) || lr.leaveType !== "paid_leave") continue;
     const [y, m, d] = lr.requestDate.split("-").map(Number);
     const ym = `${y}-${m}`;
-    if (!empMap.has(lr.employeeCode)) empMap.set(lr.employeeCode, { name: lr.employeeName, months: new Map() });
-    const emp = empMap.get(lr.employeeCode)!;
-    if (!emp.months.has(ym)) emp.months.set(ym, new Set());
-    emp.months.get(ym)!.add(d);
+    const emp = ensureEmp(lr.employeeCode, lr.employeeName);
+    ensureMonth(emp, ym).paidLeaveDays.add(d);
   }
 
   return empMap;
@@ -415,17 +425,18 @@ export async function handleDiaryExcelDownload(req: Request, res: Response): Pro
     let seed = 12345;
 
     for (const [, emp] of empMap) {
-      for (const [ym, daySet] of emp.months) {
+      for (const [ym, monthData] of emp.months) {
         const [year, month] = ym.split("-").map(Number);
-        const workingDays = Array.from(daySet).sort((a, b) => a - b);
-        if (workingDays.length === 0) continue;
+        const workingDays = Array.from(monthData.workDays).sort((a, b) => a - b);
+        const paidLeaveDays = Array.from(monthData.paidLeaveDays).sort((a, b) => a - b);
+        if (workingDays.length === 0 && paidLeaveDays.length === 0) continue;
 
         const shortName = emp.name.split(/\s+/)[0];
         const sheetName = `${year}.${month}_${shortName}`.slice(0, 31);
         const ws = wb.addWorksheet(sheetName);
 
-        buildDiarySheet(ws, year, month, emp.name, workingDays, supervisor, seed++);
-        console.log(`[diary-excel] ${sheetName}: ${workingDays.length}日`);
+        buildDiarySheet(ws, year, month, emp.name, workingDays, paidLeaveDays, supervisor, seed++);
+        console.log(`[diary-excel] ${sheetName}: 出勤${workingDays.length}日 有給${paidLeaveDays.length}日`);
       }
     }
 
