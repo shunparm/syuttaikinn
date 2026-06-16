@@ -14,11 +14,14 @@ function toJSTDate(s: string | Date | null | undefined): Date | null {
   return new Date(new Date(s).getTime() + JST_OFFSET);
 }
 
-// "YYYY/MM/DD"（JST基準）
+const DOW_JA = ["（日）", "（月）", "（火）", "（水）", "（木）", "（金）", "（土）"];
+
+// "YYYY/MM/DD（曜）"（JST基準）
 function fmtDate(s: string | Date | null | undefined): string {
   const d = toJSTDate(s);
   if (!d) return "";
-  return `${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${String(d.getUTCDate()).padStart(2,"0")}`;
+  const dow = DOW_JA[d.getUTCDay()];
+  return `${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${String(d.getUTCDate()).padStart(2,"0")}${dow}`;
 }
 
 // "YYYY/MM/DD HH:mm"（JST基準）
@@ -354,10 +357,11 @@ export const exportRouter = router({
       const lvRows: SortableRow[] = leaveRows.map(lr => {
         const [y, m, d] = lr.requestDate.split("-");
         const label = LEAVE_TYPE_LABEL[lr.leaveType] ?? lr.leaveType;
+        const dow = DOW_JA[new Date(`${lr.requestDate}T00:00:00+09:00`).getDay()];
         return {
           sortKey: `${lr.requestDate}_${lr.employeeCode}`,
           cells: [
-            `${y}/${m}/${d}`, lr.employeeCode, lr.employeeName,
+            `${y}/${m}/${d}${dow}`, lr.employeeCode, lr.employeeName,
             "", "", "", "", "", "",
             (lr.reason ?? "").replace(/,/g,"、").replace(/\n/g," "),
             label,
@@ -466,10 +470,11 @@ export const exportRouter = router({
 
       const lvRows: SortableRow[] = leaveRows.map(lr => {
         const [y, m, d] = lr.requestDate.split("-");
+        const dow = DOW_JA[new Date(`${lr.requestDate}T00:00:00+09:00`).getDay()];
         return {
           sortKey: `${lr.requestDate}_${lr.employeeCode}`,
           cells: [
-            `${y}/${m}/${d}`,                                    // A: 日付
+            `${y}/${m}/${d}${dow}`,                              // A: 日付
             lr.employeeCode,                                      // B: 社員ID
             lr.employeeName,                                      // C: 氏名
             "",                                                   // D: 区分
