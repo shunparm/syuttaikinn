@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { leaveRequests, employeeMaster } from "../../drizzle/schema";
+import { writePaidLeaveToExcel } from "../routes/paidLeaveExcel";
 
 const iso = (d: Date) => d.toISOString();
 
@@ -100,7 +101,13 @@ export const leaveRequestRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = getDb();
       const rows = await db
-        .select()
+        .select({
+          id: leaveRequests.id,
+          status: leaveRequests.status,
+          leaveType: leaveRequests.leaveType,
+          requestDate: leaveRequests.requestDate,
+          employeeId: leaveRequests.employeeId,
+        })
         .from(leaveRequests)
         .where(eq(leaveRequests.id, input.id))
         .limit(1);
@@ -118,6 +125,25 @@ export const leaveRequestRouter = router({
           updatedAt: now,
         })
         .where(eq(leaveRequests.id, input.id));
+
+      // 有給休暇の場合はExcel管理簿に書き込む
+      if (rows[0].leaveType === "paid_leave") {
+        const empRows = await db
+          .select({ name: employeeMaster.name })
+          .from(employeeMaster)
+          .where(eq(employeeMaster.id, rows[0].employeeId))
+          .limit(1);
+        if (empRows.length > 0) {
+          const result = await writePaidLeaveToExcel({
+            employeeName: empRows[0].name,
+            leaveDate: rows[0].requestDate,
+          });
+          if (!result.success) {
+            console.error(`[paid-leave-excel] 書き込み失敗: ${result.error}`);
+          }
+        }
+      }
+
       return { success: true };
     }),
 

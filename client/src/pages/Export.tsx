@@ -170,6 +170,34 @@ export default function Export() {
         </p>
       </div>
 
+      {/* 有給休暇管理簿 ダウンロード */}
+      <Card className="border-0 shadow-sm border-l-4 border-l-green-500">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-green-600" />
+            有給休暇管理簿
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            有給休暇申請を承認するたびに自動更新されるExcel管理簿をダウンロードします。
+          </p>
+          <Button
+            onClick={() => {
+              const link = document.createElement("a");
+              link.href = "/api/export/paid-leave-excel";
+              link.download = "有給休暇管理簿.xlsx";
+              link.click();
+            }}
+            variant="outline"
+            className="gap-2 border-green-500 text-green-700 hover:bg-green-50"
+          >
+            <Download className="h-4 w-4" />
+            有給休暇管理簿をダウンロード
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* 技能実習日誌 生成 */}
       <Card className="border-0 shadow-sm border-l-4 border-l-primary">
         <CardHeader className="pb-3">
