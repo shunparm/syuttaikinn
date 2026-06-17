@@ -16,12 +16,18 @@ function toJSTDate(s: string | Date | null | undefined): Date | null {
 
 const DOW_JA = ["（日）", "（月）", "（火）", "（水）", "（木）", "（金）", "（土）"];
 
+// "YYYY-MM-DD" 文字列から曜日インデックスを取得（タイムゾーン非依存）
+function dowFromDateStr(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return DOW_JA[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
 // "YYYY/MM/DD（曜）"（JST基準）
 function fmtDate(s: string | Date | null | undefined): string {
   const d = toJSTDate(s);
   if (!d) return "";
-  const dow = DOW_JA[d.getUTCDay()];
-  return `${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${String(d.getUTCDate()).padStart(2,"0")}${dow}`;
+  const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
+  return `${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${String(d.getUTCDate()).padStart(2,"0")}${dowFromDateStr(dateStr)}`;
 }
 
 // "YYYY/MM/DD HH:mm"（JST基準）
@@ -357,7 +363,7 @@ export const exportRouter = router({
       const lvRows: SortableRow[] = leaveRows.map(lr => {
         const [y, m, d] = lr.requestDate.split("-");
         const label = LEAVE_TYPE_LABEL[lr.leaveType] ?? lr.leaveType;
-        const dow = DOW_JA[new Date(`${lr.requestDate}T00:00:00+09:00`).getDay()];
+        const dow = dowFromDateStr(lr.requestDate);
         return {
           sortKey: `${lr.requestDate}_${lr.employeeCode}`,
           cells: [
@@ -470,7 +476,7 @@ export const exportRouter = router({
 
       const lvRows: SortableRow[] = leaveRows.map(lr => {
         const [y, m, d] = lr.requestDate.split("-");
-        const dow = DOW_JA[new Date(`${lr.requestDate}T00:00:00+09:00`).getDay()];
+        const dow = dowFromDateStr(lr.requestDate);
         return {
           sortKey: `${lr.requestDate}_${lr.employeeCode}`,
           cells: [
