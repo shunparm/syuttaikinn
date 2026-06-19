@@ -4,25 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
-
-// 実働時間計算（12:00〜13:00 JST の重複分を差し引く、UTC環境対応）
-// breakStart/breakEnd は JST 当日の 12:00/13:00 を UTC で表現
-const JST_OFFSET = 9 * 60 * 60 * 1000;
-function jstBreakRange(clockIn: Date): { breakStart: Date; breakEnd: Date } {
-  const jst = new Date(clockIn.getTime() + JST_OFFSET);
-  const y = jst.getUTCFullYear(), mo = jst.getUTCMonth(), d = jst.getUTCDate();
-  return {
-    breakStart: new Date(Date.UTC(y, mo, d, 3, 0, 0)),  // UTC 03:00 = JST 12:00
-    breakEnd:   new Date(Date.UTC(y, mo, d, 4, 0, 0)),  // UTC 04:00 = JST 13:00
-  };
-}
-function calcWorkingMinutes(clockInStr: string, clockOut: Date): number {
-  const clockIn = new Date(clockInStr);
-  const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
-  const { breakStart, breakEnd } = jstBreakRange(clockIn);
-  const overlapMs  = Math.max(0, Math.min(clockOut.getTime(), breakEnd.getTime()) - Math.max(clockIn.getTime(), breakStart.getTime()));
-  return Math.max(0, totalMinutes - Math.floor(overlapMs / 60000));
-}
+import { calcWorkingMinutes } from "../utils/time";
 
 const iso = (d: Date) => d.toISOString();
 
@@ -65,7 +47,7 @@ export const attendanceRouter = router({
       if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "記録が見つかりません" });
       const record = rows[0];
       const nowDate = new Date();
-      const workingMinutes = calcWorkingMinutes(record.clockInTime, nowDate);
+      const workingMinutes = calcWorkingMinutes(new Date(record.clockInTime), nowDate);
       const companionJson = input.companionEmployeeIds && input.companionEmployeeIds.length > 0
         ? JSON.stringify(input.companionEmployeeIds)
         : record.companionEmployeeIds ?? null;
@@ -141,7 +123,7 @@ export const attendanceRouter = router({
       return rows.map(r => ({
         ...r,
         workingMinutes: r.clockOutTime
-          ? calcWorkingMinutes(r.clockInTime, new Date(r.clockOutTime))
+          ? calcWorkingMinutes(new Date(r.clockInTime), new Date(r.clockOutTime))
           : null,
       }));
     }),

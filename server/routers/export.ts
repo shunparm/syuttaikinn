@@ -3,11 +3,9 @@ import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster, leaveRequests } from "../../drizzle/schema";
+import { JST_OFFSET, toJSTDateStr, calcWorkingMinutes } from "../utils/time";
 
 const iso = (d: Date) => d.toISOString();
-
-// ─── JST変換ユーティリティ ───────────────────────────────────────
-const JST_OFFSET = 9 * 60 * 60 * 1000;
 
 function toJSTDate(s: string | Date | null | undefined): Date | null {
   if (!s) return null;
@@ -42,35 +40,12 @@ const minToHHMM = (m: number | null | undefined): string => {
   return `${Math.floor(m/60)}:${String(m%60).padStart(2,"0")}`;
 };
 
-// "YYYY-MM-DD"（JST基準）― leave_requests の requestDate と比較用
-function toJSTDateStr(d: Date): string {
-  const jst = new Date(d.getTime() + JST_OFFSET);
-  return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth()+1).padStart(2,"0")}-${String(jst.getUTCDate()).padStart(2,"0")}`;
-}
-
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   paid_leave: "有給休暇",
   substitute_holiday: "代休",
   special_leave: "特別休暇",
   holiday_request: "休日希望",
 };
-
-// ─── 実働時間計算（JST 12:00〜13:00 の重複分を差し引く）─────────
-function jstBreakRange(clockIn: Date): { breakStart: Date; breakEnd: Date } {
-  const jst = new Date(clockIn.getTime() + JST_OFFSET);
-  const y = jst.getUTCFullYear(), mo = jst.getUTCMonth(), d = jst.getUTCDate();
-  return {
-    breakStart: new Date(Date.UTC(y, mo, d, 3, 0, 0)),  // UTC 03:00 = JST 12:00
-    breakEnd:   new Date(Date.UTC(y, mo, d, 4, 0, 0)),  // UTC 04:00 = JST 13:00
-  };
-}
-
-function calcWorkingMinutes(clockIn: Date, clockOut: Date): number {
-  const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
-  const { breakStart, breakEnd } = jstBreakRange(clockIn);
-  const overlapMs = Math.max(0, Math.min(clockOut.getTime(), breakEnd.getTime()) - Math.max(clockIn.getTime(), breakStart.getTime()));
-  return Math.max(0, totalMinutes - Math.floor(overlapMs / 60000));
-}
 
 function computeWorkingMinutes(clockInStr: string | null | undefined, clockOutStr: string | null | undefined): number | null {
   if (!clockInStr || !clockOutStr) return null;

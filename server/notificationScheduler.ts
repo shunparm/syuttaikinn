@@ -1,6 +1,7 @@
 import { schedule } from "node-cron";
 import webpush from "web-push";
 import { pool } from "./db";
+import { jstNow } from "./utils/time";
 
 function initWebPush(): boolean {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
@@ -85,12 +86,6 @@ async function getNotificationConfig(): Promise<{ clockInTime: string; clockOutT
   } finally {
     conn.release();
   }
-}
-
-function jstNow(): { hour: number; minute: number; weekday: number } {
-  const now = new Date();
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return { hour: jst.getUTCHours(), minute: jst.getUTCMinutes(), weekday: jst.getUTCDay() };
 }
 
 export function startNotificationScheduler() {

@@ -4,18 +4,7 @@ import ExcelJS from "exceljs";
 import { router, publicProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
-
-// ─── JST ユーティリティ ──────────────────────────────────────────
-const JST_OFFSET = 9 * 60 * 60 * 1000;
-
-function toJST(d: Date): Date {
-  return new Date(d.getTime() + JST_OFFSET);
-}
-
-function toJSTDateStr(d: Date): string {
-  const j = toJST(d);
-  return `${j.getUTCFullYear()}-${String(j.getUTCMonth() + 1).padStart(2, "0")}-${String(j.getUTCDate()).padStart(2, "0")}`;
-}
+import { toJSTDateStr } from "../utils/time";
 
 // ─── 実働時間計算（6h以上の場合は休憩1h控除、時給制用）──────────
 function calcActualHours(clockIn: Date, clockOut: Date): number {

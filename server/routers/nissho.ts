@@ -3,31 +3,12 @@ import { eq, and } from "drizzle-orm";
 import { router, publicProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster, nisshoRecords } from "../../drizzle/schema";
-
-// ─── JST ユーティリティ ──────────────────────────────────────────
-const JST = 9 * 60 * 60 * 1000;
-
-function toJST(d: Date): Date {
-  return new Date(d.getTime() + JST);
-}
+import { toJST, calcWorkingMinutes } from "../utils/time";
 
 function fmtTime(isoStr: string | null | undefined): string {
   if (!isoStr) return "-";
   const d = toJST(new Date(isoStr));
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
-}
-
-function calcWorkingMinutes(clockIn: Date, clockOut: Date): number {
-  const total = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
-  const j = toJST(clockIn);
-  const y = j.getUTCFullYear(), mo = j.getUTCMonth(), d = j.getUTCDate();
-  const breakStart = new Date(Date.UTC(y, mo, d, 3, 0));
-  const breakEnd   = new Date(Date.UTC(y, mo, d, 4, 0));
-  const overlap = Math.max(0,
-    Math.min(clockOut.getTime(), breakEnd.getTime()) -
-    Math.max(clockIn.getTime(), breakStart.getTime())
-  );
-  return Math.max(0, total - Math.floor(overlap / 60000));
 }
 
 // ─── 日報テキスト生成 ─────────────────────────────────────────────

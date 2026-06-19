@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { getDb, pool } from "../db";
 import { correctionRequests, attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
+import { calcWorkingMinutes } from "../utils/time";
 
 const iso = (d: Date) => d.toISOString();
 
@@ -43,24 +44,6 @@ async function ensureNewRecordMigration() {
   }
   newRecordMigrationDone = true;
   client.release();
-}
-
-// 実働時間計算（12:00〜13:00 JST の重複分を差し引く、UTC環境対応）
-const JST_OFFSET = 9 * 60 * 60 * 1000;
-function jstBreakRange(clockIn: Date): { breakStart: Date; breakEnd: Date } {
-  const jst = new Date(clockIn.getTime() + JST_OFFSET);
-  const y = jst.getUTCFullYear(), mo = jst.getUTCMonth(), d = jst.getUTCDate();
-  return {
-    breakStart: new Date(Date.UTC(y, mo, d, 3, 0, 0)),  // UTC 03:00 = JST 12:00
-    breakEnd:   new Date(Date.UTC(y, mo, d, 4, 0, 0)),  // UTC 04:00 = JST 13:00
-  };
-}
-function calcWorkingMinutes(clockInStr: string, clockOutStr: string): number {
-  const clockIn = new Date(clockInStr), clockOut = new Date(clockOutStr);
-  const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / 60000);
-  const { breakStart, breakEnd } = jstBreakRange(clockIn);
-  const overlapMs  = Math.max(0, Math.min(clockOut.getTime(), breakEnd.getTime()) - Math.max(clockIn.getTime(), breakStart.getTime()));
-  return Math.max(0, totalMinutes - Math.floor(overlapMs / 60000));
 }
 
 export const correctionRouter = router({
@@ -199,7 +182,7 @@ export const correctionRouter = router({
       if (req.correctionType === "new_record") {
         if (!req.newClockInTime || !req.newSiteId) throw new TRPCError({ code: "BAD_REQUEST", message: "新規記録に必要な情報が不足しています" });
         const workingMinutes = req.newClockOutTime
-          ? calcWorkingMinutes(req.newClockInTime, req.newClockOutTime)
+          ? calcWorkingMinutes(new Date(req.newClockInTime), new Date(req.newClockOutTime))
           : null;
         await db.insert(attendanceRecords).values({
           employeeId: req.employeeId,
@@ -227,7 +210,7 @@ export const correctionRouter = router({
           const newClockIn = req.newClockInTime ?? ar.clockInTime;
           const newClockOut = req.newClockOutTime ?? ar.clockOutTime;
           if (newClockOut) {
-            const workingMinutes = calcWorkingMinutes(newClockIn, newClockOut);
+            const workingMinutes = calcWorkingMinutes(new Date(newClockIn), new Date(newClockOut));
             await db.update(attendanceRecords).set({ clockInTime: newClockIn, clockOutTime: newClockOut, workingMinutes, isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId!));
           } else {
             await db.update(attendanceRecords).set({ clockInTime: newClockIn, isCorrected: true, updatedAt: now }).where(eq(attendanceRecords.id, req.attendanceRecordId!));
