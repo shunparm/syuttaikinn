@@ -145,7 +145,7 @@ function setCell(
   const c = ws.getCell(coord);
   c.value = value;
   c.font = { name: FONT_NAME, size: opts.size ?? 9, bold: opts.bold ?? false };
-  c.alignment = { horizontal: opts.hAlign ?? "left", vertical: opts.vAlign ?? "center", wrapText: opts.wrap ?? false };
+  c.alignment = { horizontal: opts.hAlign ?? "left", vertical: opts.vAlign ?? "middle", wrapText: opts.wrap ?? false };
   if (opts.border) c.border = thinBorder();
   if (opts.bottomBorder) c.border = { bottom: { style: "thin" } };
 }
@@ -284,7 +284,7 @@ function buildDiarySheet(
     aCell.value = dateObj;
     aCell.numFmt = "yyyy/m/d";
     aCell.font = { name: FONT_NAME, size: 8 };
-    aCell.alignment = { horizontal: "center", vertical: "center" };
+    aCell.alignment = { horizontal: "center", vertical: "middle" };
     aCell.border = thinBorder();
 
     // B:C 結合
