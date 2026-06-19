@@ -72,7 +72,8 @@ export async function writePaidLeaveToExcel(params: {
   }
 
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(dbBuf);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await wb.xlsx.load(dbBuf as any);
 
   // シート名マッチング（スペース除去で比較）
   const normalize = (s: string) => s.replace(/[\s　]+/g, "");

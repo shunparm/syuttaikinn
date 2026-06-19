@@ -58,7 +58,7 @@ const workerMenuItems = [
   { icon: Settings2, label: "通知設定", path: "/notification-settings", iconColor: "text-sky-500" },
 ];
 
-const adminMenuItems = [
+const adminMenuItems: { icon: React.ComponentType<{ className?: string }>; label: string; path: string; iconColor?: string }[] = [
   { icon: TrendingUp, label: "月次サマリー", path: "/admin/summary" },
   { icon: Download, label: "CSV出力", path: "/export" },
   { icon: Users, label: "作業員管理", path: "/admin/employees" },

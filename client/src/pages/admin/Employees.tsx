@@ -30,10 +30,10 @@ type Employee = {
   id: number;
   employeeId: string;
   name: string;
-  nameKana?: string;
+  nameKana?: string | null;
   role: string;
   status: string;
-  employmentType?: string;
+  employmentType?: string | null;
   createdAt: string;
   updatedAt: string;
 };

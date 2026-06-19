@@ -265,7 +265,7 @@ export default function Records() {
                     </Button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
                       .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                      .reduce((acc, p, idx, arr) => {
+                      .reduce<(string | number)[]>((acc, p, idx, arr) => {
                         if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
                         acc.push(p);
                         return acc;
@@ -279,7 +279,7 @@ export default function Records() {
                             variant={currentPage === p ? "default" : "outline"}
                             size="sm"
                             className="h-8 w-8 p-0 text-xs"
-                            onClick={() => setCurrentPage(p)}
+                            onClick={() => setCurrentPage(p as number)}
                           >
                             {p}
                           </Button>
