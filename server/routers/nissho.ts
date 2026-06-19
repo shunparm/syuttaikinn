@@ -55,13 +55,9 @@ async function generateNisshoContent(date: string, employeeId: number): Promise<
     .where(and(
       eq(attendanceRecords.employeeId, employeeId),
       eq(attendanceRecords.status, "active"),
-      and(
-        // clockInTime >= start
-        // drizzleのgte/lteはtextフィールドでもISOソートで比較可能
-      ),
     ));
 
-  // date条件はJavaScript側でフィルタ（textフィールドのため）
+  // date条件はJavaScript側でフィルタ（clockInTimeがtextフィールドのため）
   const filtered = rows.filter(r => {
     const clockIn = new Date(r.clockInTime);
     return clockIn >= start && clockIn <= end;
