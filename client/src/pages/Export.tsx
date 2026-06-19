@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, Users, Clock, Calendar, BookOpen, Calculator, ChevronDown, Check } from "lucide-react";
+import { Download, FileSpreadsheet, Users, Clock, Calendar, BookOpen, Calculator, ChevronDown, Check, FileText } from "lucide-react";
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   paid_leave: "有給休暇",
@@ -104,6 +104,33 @@ export default function Export() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     toast.success("CSVをダウンロードしました");
+  };
+
+  const handleLeaveDownload = () => {
+    const leaveRows = exportData?.leaveRows;
+    if (!leaveRows || leaveRows.length === 0) {
+      toast.error("対象期間に承認済みの休暇申請がありません");
+      return;
+    }
+    const header = ["日付", "作業員コード", "氏名", "種別", "理由"];
+    const rows = leaveRows.map(lr => [
+      lr.requestDate.replace(/-/g, "/"),
+      lr.employeeCode,
+      lr.employeeName,
+      LEAVE_TYPE_LABEL[lr.leaveType] ?? lr.leaveType,
+      (lr.reason ?? "").replace(/,/g, "、").replace(/\n/g, " "),
+    ]);
+    const csv = "﻿" + [header, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `有給休暇管理簿_${startDate}_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("有給休暇管理簿をダウンロードしました");
   };
 
   const handleDiaryDownload = async () => {
@@ -326,12 +353,11 @@ export default function Export() {
               <Button
                 onClick={handleDownload}
                 size="sm"
-                variant="outline"
-                className="gap-2"
+                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
                 disabled={csvLoading || !hasData}
               >
                 <Download className="h-4 w-4" />
-                出退勤CSV
+                出退勤管理簿
               </Button>
               {csvError && <p className="text-xs text-destructive">データの取得に失敗しました</p>}
               {!csvError && <p className="text-xs text-muted-foreground">作業記録の確認・保管用（全項目含む）</p>}
@@ -340,11 +366,11 @@ export default function Export() {
               <Button
                 onClick={handlePayrollDownload}
                 size="sm"
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                 disabled={payrollCsvLoading || !hasData}
               >
                 <Calculator className="h-4 w-4" />
-                給与計算用CSV
+                給与計算用管理簿
               </Button>
               {payrollCsvError && <p className="text-xs text-destructive">データの取得に失敗しました</p>}
               {!payrollCsvError && <p className="text-xs text-muted-foreground">給与計算システムの「出退勤入力」シートに貼り付け可能</p>}
@@ -358,8 +384,7 @@ export default function Export() {
                   link.click();
                 }}
                 size="sm"
-                variant="outline"
-                className="gap-2 border-green-500 text-green-700 hover:bg-green-50"
+                className="gap-2 bg-orange-500 hover:bg-orange-600 text-white"
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 有給休暇管理簿
