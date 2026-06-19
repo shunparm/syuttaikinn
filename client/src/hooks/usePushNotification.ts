@@ -65,12 +65,9 @@ export function usePushNotification() {
 
       const reg = await navigator.serviceWorker.ready;
       const existing = await reg.pushManager.getSubscription();
-      if (existing) {
-        setIsSubscribed(true);
-        return;
-      }
 
-      const sub = await reg.pushManager.subscribe({
+      // 既存の購読があっても必ずサーバーに登録する（DBリセット・再デプロイ後の同期ずれ対策）
+      const sub = existing ?? await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey),
       });

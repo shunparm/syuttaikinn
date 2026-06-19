@@ -54,7 +54,15 @@ export async function sendNotificationToAll(title: string, body: string, url = "
   }
 
   const ok = results.filter(r => r.status === "fulfilled").length;
-  console.log(`[Push] ${title}: ${ok}/${rows.length} 件送信`);
+  const failed = results
+    .map((r, i) => ({ r, row: rows[i] }))
+    .filter(({ r }) => r.status === "rejected" && (r.reason as { statusCode?: number })?.statusCode !== 410);
+  if (failed.length > 0) {
+    failed.forEach(({ r, row }) => {
+      console.error(`[Push] 送信失敗 endpoint=${row.endpoint.slice(-20)}: ${(r as PromiseRejectedResult).reason}`);
+    });
+  }
+  console.log(`[Push] ${title}: ${ok}/${rows.length} 件送信（期限切れ削除: ${expired.length}件）`);
 }
 
 async function getNotificationConfig(): Promise<{ clockInTime: string; clockOutTime: string }> {
@@ -64,7 +72,16 @@ async function getNotificationConfig(): Promise<{ clockInTime: string; clockOutT
       `SELECT clock_in_time, clock_out_time FROM notification_config WHERE id = 1`
     );
     if (result.rows.length === 0) return { clockInTime: "08:00", clockOutTime: "17:00" };
-    return { clockInTime: result.rows[0].clock_in_time, clockOutTime: result.rows[0].clock_out_time };
+    const { clock_in_time, clock_out_time } = result.rows[0];
+    // HH:MM形式でない場合はデフォルト値を使用
+    const timeRe = /^\d{2}:\d{2}$/;
+    return {
+      clockInTime: timeRe.test(clock_in_time) ? clock_in_time : "08:00",
+      clockOutTime: timeRe.test(clock_out_time) ? clock_out_time : "17:00",
+    };
+  } catch (e) {
+    console.error("[Push] getNotificationConfig DB error:", e);
+    return { clockInTime: "08:00", clockOutTime: "17:00" };
   } finally {
     conn.release();
   }
