@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, ne, notInArray } from "drizzle-orm";
+import { eq, and, desc, ne, notInArray, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { getDb, pool } from "../db";
@@ -153,22 +153,37 @@ export const correctionRouter = router({
       return rows.filter((r) => r.status === input.status);
     }),
 
-  listAllCorrectionRequests: adminProcedure.query(async () => {
-    const db = getDb();
-    return db.select({
-      id: correctionRequests.id, attendanceRecordId: correctionRequests.attendanceRecordId,
-      employeeId: correctionRequests.employeeId, reason: correctionRequests.reason, correctionType: correctionRequests.correctionType,
-      newClockInTime: correctionRequests.newClockInTime, newClockOutTime: correctionRequests.newClockOutTime,
-      newSiteId: correctionRequests.newSiteId,
-      status: correctionRequests.status, approvedBy: correctionRequests.approvedBy, approvedByName: correctionRequests.approvedByName, approvedAt: correctionRequests.approvedAt,
-      createdAt: correctionRequests.createdAt, employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
-      clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime, siteName: siteMaster.siteName,
-    }).from(correctionRequests)
-      .innerJoin(employeeMaster, eq(correctionRequests.employeeId, employeeMaster.id))
-      .leftJoin(attendanceRecords, eq(correctionRequests.attendanceRecordId, attendanceRecords.id))
-      .leftJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
-      .orderBy(desc(correctionRequests.createdAt));
-  }),
+  listAllCorrectionRequests: adminProcedure
+    .input(z.object({ showAllProcessed: z.boolean().optional().default(false) }).optional())
+    .query(async ({ input }) => {
+      const db = getDb();
+      const showAll = input?.showAllProcessed ?? false;
+      // 処理済みは直近3ヶ月のみ（showAll=trueなら全件）
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const sinceStr = threeMonthsAgo.toISOString();
+
+      const allRows = await db.select({
+        id: correctionRequests.id, attendanceRecordId: correctionRequests.attendanceRecordId,
+        employeeId: correctionRequests.employeeId, reason: correctionRequests.reason, correctionType: correctionRequests.correctionType,
+        newClockInTime: correctionRequests.newClockInTime, newClockOutTime: correctionRequests.newClockOutTime,
+        newSiteId: correctionRequests.newSiteId,
+        status: correctionRequests.status, approvedBy: correctionRequests.approvedBy, approvedByName: correctionRequests.approvedByName, approvedAt: correctionRequests.approvedAt,
+        createdAt: correctionRequests.createdAt, employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
+        clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime, siteName: siteMaster.siteName,
+      }).from(correctionRequests)
+        .innerJoin(employeeMaster, eq(correctionRequests.employeeId, employeeMaster.id))
+        .leftJoin(attendanceRecords, eq(correctionRequests.attendanceRecordId, attendanceRecords.id))
+        .leftJoin(siteMaster, eq(attendanceRecords.siteId, siteMaster.id))
+        .orderBy(desc(correctionRequests.createdAt));
+
+      if (showAll) return allRows;
+
+      // pending は全件、processed は直近3ヶ月のみ
+      return allRows.filter(r =>
+        r.status === "pending" || r.createdAt >= sinceStr
+      );
+    }),
 
   approveCorrectionRequest: adminProcedure
     .input(z.object({ id: z.number() }))

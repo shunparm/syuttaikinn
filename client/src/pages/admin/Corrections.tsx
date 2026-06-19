@@ -54,8 +54,9 @@ export default function AdminCorrections() {
   const [savedMsg, setSavedMsg] = useState("");
   const [pendingPage, setPendingPage] = useState(1);
   const [processedPage, setProcessedPage] = useState(1);
+  const [showAllProcessed, setShowAllProcessed] = useState(false);
 
-  const { data: requests, refetch } = trpc.correction.listAllCorrectionRequests.useQuery();
+  const { data: requests, refetch } = trpc.correction.listAllCorrectionRequests.useQuery({ showAllProcessed });
 
   const approveMutation = trpc.correction.approveCorrectionRequest.useMutation({
     onSuccess: () => {
@@ -263,9 +264,17 @@ export default function AdminCorrections() {
       {/* 処理済み */}
       {processedRequests.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            処理済み ({processedRequests.length}件)
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              処理済み ({processedRequests.length}件{!showAllProcessed && "・直近3ヶ月"})
+            </h2>
+            <button
+              onClick={() => { setShowAllProcessed(v => !v); setProcessedPage(1); }}
+              className="text-xs text-primary hover:underline"
+            >
+              {showAllProcessed ? "直近3ヶ月のみ表示" : "すべて表示"}
+            </button>
+          </div>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
