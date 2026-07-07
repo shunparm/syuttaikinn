@@ -40,7 +40,7 @@ export function registerAuthRoutes(app: Express) {
 
       const employee = rows[0];
 
-      if (!employee || employee.role !== "admin") {
+      if (!employee || !["admin", "owner"].includes(employee.role)) {
         res.status(401).json({ error: "社員IDまたはパスワードが正しくありません" });
         return;
       }
@@ -56,7 +56,8 @@ export function registerAuthRoutes(app: Express) {
         name: employee.name,
         email: null,
         loginMethod: "employee",
-        role: "admin",
+        // employee_master のロールを引き継ぐ（owner=社長 / admin=管理者）
+        role: employee.role === "owner" ? "owner" : "admin",
         lastSignedIn: new Date().toISOString(),
       });
 

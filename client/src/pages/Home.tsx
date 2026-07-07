@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -62,7 +63,7 @@ export default function Home() {
   };
   const { data: stats, isLoading } = trpc.attendance.getDashboardStats.useQuery();
   const { data: activeWorkers } = trpc.attendance.getActiveWorkers.useQuery();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const { data: allCorrections } = trpc.correction.listAllCorrectionRequests.useQuery(undefined, { enabled: isAdmin });
   const { data: allLeaveRequests } = trpc.leaveRequest.listAll.useQuery(undefined, { enabled: isAdmin });
   const pendingCorrectionCount = allCorrections?.filter((c) => c.status === "pending").length ?? 0;
@@ -189,7 +190,7 @@ export default function Home() {
       </div>
 
       {/* 初回セットアップガイド（管理者かつ作業員or現場が未登録） */}
-      {user?.role === "admin" && !isLoading && ((stats?.totalEmployees ?? 0) === 0 || (stats?.totalSites ?? 0) === 0) && (
+      {isAdminRole(user?.role) && !isLoading && ((stats?.totalEmployees ?? 0) === 0 || (stats?.totalSites ?? 0) === 0) && (
         <Card className="border border-amber-200 bg-amber-50 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-start gap-3">
@@ -285,7 +286,7 @@ export default function Home() {
           icon={Users}
           description="登録済み作業員"
           color="bg-violet-100 text-violet-600"
-          onClick={() => user?.role === "admin" ? setLocation("/admin/employees") : undefined}
+          onClick={() => isAdminRole(user?.role) ? setLocation("/admin/employees") : undefined}
         />
         <StatCard
           title="現場数"
@@ -293,7 +294,7 @@ export default function Home() {
           icon={Building2}
           description="稼働中の工事現場"
           color="bg-amber-100 text-amber-600"
-          onClick={() => user?.role === "admin" ? setLocation("/admin/sites") : undefined}
+          onClick={() => isAdminRole(user?.role) ? setLocation("/admin/sites") : undefined}
         />
       </div>
 

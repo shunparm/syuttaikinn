@@ -11,6 +11,7 @@ import { usersRouter } from "./routers/users";
 import { pushNotificationRouter } from "./routers/pushNotification";
 import { kyuyoRouter } from "./routers/kyuyo";
 import { nisshoRouter } from "./routers/nissho";
+import { siteAssignmentRouter } from "./routers/siteAssignment";
 
 export const appRouter = router({
   system: systemRouter,
@@ -49,6 +50,9 @@ export const appRouter = router({
 
   // 日報
   nissho: nisshoRouter,
+
+  // 現場配置日報（TimeTree置き換え）
+  siteAssignment: siteAssignmentRouter,
 });
 
 export type AppRouter = typeof appRouter;

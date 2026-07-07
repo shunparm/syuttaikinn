@@ -28,7 +28,7 @@ export async function requireAdminExpress(req: Request, res: Response, next: Nex
       res.status(401).json({ error: UNAUTHED_ERR_MSG });
       return;
     }
-    if (user.role !== "admin") {
+    if (!["admin", "owner"].includes(user.role)) {
       res.status(403).json({ error: NOT_ADMIN_ERR_MSG });
       return;
     }

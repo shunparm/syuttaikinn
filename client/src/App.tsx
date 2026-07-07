@@ -21,6 +21,7 @@ import AdminCorrections from "./pages/admin/Corrections";
 import AdminLeaveRequests from "./pages/admin/LeaveRequests";
 import AdminUsers from "./pages/admin/Users";
 import AdminSummary from "./pages/admin/Summary";
+import SiteAssignments from "./pages/admin/SiteAssignments";
 import Login from "./pages/Login";
 import NotificationSettings from "./pages/NotificationSettings";
 
@@ -59,6 +60,7 @@ function Router() {
               <Route path="/admin/leave-requests" component={AdminLeaveRequests} />
               <Route path="/admin/users" component={AdminUsers} />
               <Route path="/admin/summary" component={AdminSummary} />
+              <Route path="/admin/site-assignments" component={SiteAssignments} />
               <Route path="/404" component={NotFound} />
               <Route component={NotFound} />
             </Switch>

@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ import {
   Shield,
   TrendingUp,
   Users,
+  MapPin,
   UserCog,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -60,6 +62,7 @@ const workerMenuItems = [
 
 const adminMenuItems: { icon: React.ComponentType<{ className?: string }>; label: string; path: string; iconColor?: string }[] = [
   { icon: TrendingUp, label: "月次サマリー", path: "/admin/summary" },
+  { icon: MapPin, label: "現場配置", path: "/admin/site-assignments" },
   { icon: Download, label: "CSV出力", path: "/export" },
   { icon: Users, label: "作業員管理", path: "/admin/employees" },
   { icon: Building2, label: "現場管理", path: "/admin/sites" },
@@ -156,7 +159,7 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const activeItem =
     [...workerMenuItems, ...adminMenuItems].find((item) => item.path === location);

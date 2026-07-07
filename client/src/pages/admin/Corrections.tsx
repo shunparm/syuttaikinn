@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/utils";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -92,7 +93,7 @@ export default function AdminCorrections() {
     onError: (err) => toast.error(err.message || "削除に失敗しました"),
   });
 
-  if (user?.role !== "admin") {
+  if (!isAdminRole(user?.role)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Shield className="h-12 w-12 text-muted-foreground/30 mb-3" />
