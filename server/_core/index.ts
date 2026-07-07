@@ -10,6 +10,7 @@ import { initDb } from "../db";
 import { startNotificationScheduler } from "../notificationScheduler";
 import { handleDiaryExcelDownload } from "../routes/diaryExcel";
 import { handlePaidLeaveExcelDownload, seedPaidLeaveExcel } from "../routes/paidLeaveExcel";
+import { requireAdminExpress } from "./expressAuth";
 
 async function startServer() {
   // DB初期化（テーブル作成）
@@ -53,11 +54,11 @@ async function startServer() {
     });
   });
 
-  // 日誌Excel生成ダウンロード
-  app.get("/api/export/diary-excel", handleDiaryExcelDownload);
+  // 日誌Excel生成ダウンロード（管理者のみ）
+  app.get("/api/export/diary-excel", requireAdminExpress, handleDiaryExcelDownload);
 
-  // 有給休暇管理簿Excel ダウンロード
-  app.get("/api/export/paid-leave-excel", (req, res) => handlePaidLeaveExcelDownload(req, res));
+  // 有給休暇管理簿Excel ダウンロード（管理者のみ）
+  app.get("/api/export/paid-leave-excel", requireAdminExpress, (req, res) => handlePaidLeaveExcelDownload(req, res));
 
   // tRPC API
   app.use(
