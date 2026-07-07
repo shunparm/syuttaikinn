@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, asc, inArray } from "drizzle-orm";
+import { eq, asc, gte, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, ownerProcedure } from "../_core/trpc";
 import { getDb } from "../db";
@@ -53,6 +53,28 @@ export const siteAssignmentRouter = router({
         assignments: assignments.filter(a => a.dailyReportId === r.id),
       }));
       return { date: input.date, sites };
+    }),
+
+  // 現場の使用実績（過去60日）。「現場を追加」プルダウンの並び順に使用。
+  getSiteUsage: adminProcedure
+    .query(async () => {
+      const db = getDb();
+      const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const rows = await db
+        .select({ siteId: dailyReports.siteId, reportDate: dailyReports.reportDate })
+        .from(dailyReports)
+        .where(gte(dailyReports.reportDate, since));
+
+      const usage = new Map<number, { count: number; lastUsed: string }>();
+      for (const r of rows) {
+        const u = usage.get(r.siteId);
+        if (!u) usage.set(r.siteId, { count: 1, lastUsed: r.reportDate });
+        else {
+          u.count++;
+          if (r.reportDate > u.lastUsed) u.lastUsed = r.reportDate;
+        }
+      }
+      return Array.from(usage.entries()).map(([siteId, u]) => ({ siteId, ...u }));
     }),
 
   // 現場配置の保存（日付+現場の単位でまるごと置き換え）。社長のみ。
