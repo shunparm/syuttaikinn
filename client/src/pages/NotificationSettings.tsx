@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 
 export default function NotificationSettings() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const { permission, isSubscribed, isLoading, vapidLoading, vapidError, vapidData, error, subscribe, unsubscribe } = usePushNotification();
 
   const { data: config, refetch } = trpc.push.getConfig.useQuery();

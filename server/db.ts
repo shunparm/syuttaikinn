@@ -43,7 +43,7 @@ export async function initDb() {
       );
       ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'worker';
       ALTER TABLE employee_master DROP CONSTRAINT IF EXISTS employee_master_role_check;
-      ALTER TABLE employee_master ADD CONSTRAINT employee_master_role_check CHECK(role IN ('worker', 'staff', 'admin', '応援'));
+      ALTER TABLE employee_master ADD CONSTRAINT employee_master_role_check CHECK(role IN ('worker', 'staff', 'admin', 'owner', '応援'));
       ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "nameKana" TEXT;
       ALTER TABLE employee_master DROP COLUMN IF EXISTS pin;
       ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS "passwordHash" TEXT;
@@ -52,7 +52,7 @@ export async function initDb() {
       ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS "approvedByName" TEXT;
       ALTER TABLE leave_requests DROP CONSTRAINT IF EXISTS leave_requests_approvedBy_fkey;
       ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-      ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('user', 'admin', 'staff'));
+      ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('user', 'admin', 'staff', 'owner'));
       CREATE TABLE IF NOT EXISTS site_master (
         id SERIAL PRIMARY KEY,
         "siteId" TEXT NOT NULL UNIQUE,
@@ -171,6 +171,25 @@ export async function initDb() {
         note TEXT,
         "createdAt" TEXT NOT NULL DEFAULT now()::text,
         "updatedAt" TEXT NOT NULL DEFAULT now()::text
+      );
+      CREATE TABLE IF NOT EXISTS daily_reports (
+        id SERIAL PRIMARY KEY,
+        report_date TEXT NOT NULL,
+        site_id INTEGER NOT NULL REFERENCES site_master(id),
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT now()::text,
+        updated_at TEXT NOT NULL DEFAULT now()::text,
+        UNIQUE(report_date, site_id)
+      );
+      CREATE TABLE IF NOT EXISTS daily_report_assignments (
+        id SERIAL PRIMARY KEY,
+        daily_report_id INTEGER NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
+        employee_id INTEGER NOT NULL REFERENCES employee_master(id),
+        start_time TEXT,
+        end_time TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT now()::text,
+        UNIQUE(daily_report_id, employee_id)
       );
       CREATE TABLE IF NOT EXISTS system_files (
         key TEXT PRIMARY KEY,

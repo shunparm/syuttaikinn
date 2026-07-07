@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/utils";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -38,7 +39,7 @@ type Employee = {
   updatedAt: string;
 };
 
-type RoleValue = "worker" | "staff" | "admin" | "応援";
+type RoleValue = "worker" | "staff" | "admin" | "owner" | "応援";
 type EmploymentTypeValue = "月給" | "日給" | "時給" | "実習生";
 
 export default function AdminEmployees() {
@@ -88,7 +89,7 @@ export default function AdminEmployees() {
     onError: (err) => toast.error(err.message || "削除に失敗しました"),
   });
 
-  if (user?.role !== "admin") {
+  if (!isAdminRole(user?.role)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Shield className="h-12 w-12 text-muted-foreground/30 mb-3" />
@@ -112,7 +113,7 @@ export default function AdminEmployees() {
       employeeId: emp.employeeId,
       name: emp.name,
       nameKana: emp.nameKana ?? "",
-      role: (["worker", "staff", "admin", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
+      role: (["worker", "staff", "admin", "owner", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
       employmentType: (["月給", "日給", "時給", "実習生"].includes(emp.employmentType ?? "") ? emp.employmentType : "日給") as EmploymentTypeValue,
       password: "",
     });
@@ -159,6 +160,7 @@ export default function AdminEmployees() {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const roleLabel = (role: string) => {
+    if (role === "owner") return "社長";
     if (role === "admin") return "管理者";
     if (role === "staff") return "事務";
     if (role === "応援") return "応援";
@@ -166,6 +168,7 @@ export default function AdminEmployees() {
   };
 
   const roleBadgeClass = (role: string) => {
+    if (role === "owner") return "bg-red-100 text-red-700";
     if (role === "admin") return "bg-purple-100 text-purple-700";
     if (role === "staff") return "bg-blue-100 text-blue-700";
     if (role === "応援") return "bg-orange-100 text-orange-700";
@@ -362,6 +365,7 @@ export default function AdminEmployees() {
                   <SelectItem value="worker">作業員</SelectItem>
                   <SelectItem value="staff">事務</SelectItem>
                   <SelectItem value="admin">管理者</SelectItem>
+                  <SelectItem value="owner">社長</SelectItem>
                   <SelectItem value="応援">応援</SelectItem>
                 </SelectContent>
               </Select>
@@ -383,7 +387,7 @@ export default function AdminEmployees() {
                 </SelectContent>
               </Select>
             </div>
-            {form.role === "admin" && (
+            {["admin", "owner"].includes(form.role) && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
                   ログインパスワード

@@ -7,7 +7,7 @@ export const users = pgTable("users", {
   name: text("name"),
   email: text("email"),
   loginMethod: text("loginMethod"),
-  role: text("role").default("user").notNull(), // 'user' | 'admin' | 'staff'
+  role: text("role").default("user").notNull(), // 'user' | 'admin' | 'staff' | 'owner'(社長)
   createdAt: text("createdAt").default(sql`(now()::text)`).notNull(),
   updatedAt: text("updatedAt").default(sql`(now()::text)`).notNull(),
   lastSignedIn: text("lastSignedIn").default(sql`(now()::text)`).notNull(),
@@ -23,7 +23,7 @@ export const employeeMaster = pgTable("employee_master", {
   name: text("name").notNull(),
   nameKana: text("nameKana"),
   passwordHash: text("passwordHash"),
-  role: text("role").default("worker").notNull(), // 'worker' | 'staff' | 'admin'
+  role: text("role").default("worker").notNull(), // 'worker' | 'staff' | 'admin' | 'owner'(社長) | '応援'
   status: text("status").default("active").notNull(), // 'active' | 'inactive'
   isActive: boolean("is_active").default(true),
   // 雇用区分: '月給' | '日給' | '時給' | '実習生'
@@ -165,3 +165,30 @@ export const nisshoRecords = pgTable("nissho_records", {
 
 export type NisshoRecord = typeof nisshoRecords.$inferSelect;
 export type InsertNisshoRecord = typeof nisshoRecords.$inferInsert;
+
+// ─── 現場配置日報（TimeTree置き換え：その日誰がどこにいたか）──────────────
+// 1行 = ある日のある現場。担当者は daily_report_assignments で紐付け。
+export const dailyReports = pgTable("daily_reports", {
+  id: serial("id").primaryKey(),
+  reportDate: text("report_date").notNull(), // YYYY-MM-DD (JST)
+  siteId: integer("site_id").notNull().references(() => siteMaster.id),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").default(sql`(now()::text)`).notNull(),
+  updatedAt: text("updated_at").default(sql`(now()::text)`).notNull(),
+});
+
+export type DailyReport = typeof dailyReports.$inferSelect;
+export type InsertDailyReport = typeof dailyReports.$inferInsert;
+
+export const dailyReportAssignments = pgTable("daily_report_assignments", {
+  id: serial("id").primaryKey(),
+  dailyReportId: integer("daily_report_id").notNull().references(() => dailyReports.id),
+  employeeId: integer("employee_id").notNull().references(() => employeeMaster.id),
+  startTime: text("start_time"), // "HH:MM" 任意
+  endTime: text("end_time"),     // "HH:MM" 任意
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").default(sql`(now()::text)`).notNull(),
+});
+
+export type DailyReportAssignment = typeof dailyReportAssignments.$inferSelect;
+export type InsertDailyReportAssignment = typeof dailyReportAssignments.$inferInsert;

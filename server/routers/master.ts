@@ -22,7 +22,7 @@ export const masterRouter = router({
       name: z.string().min(1).max(255),
       nameKana: z.string().optional(),
       password: z.string().min(4).optional(),
-      role: z.enum(["worker", "staff", "admin", "応援"]).default("worker"),
+      role: z.enum(["worker", "staff", "admin", "owner", "応援"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
       employmentType: z.enum(["月給", "日給", "時給", "実習生"]).default("日給"),
     }))
@@ -57,7 +57,7 @@ export const masterRouter = router({
       name: z.string().min(1).max(255).optional(),
       nameKana: z.string().optional(),
       password: z.string().min(4).optional(),
-      role: z.enum(["worker", "staff", "admin", "応援"]).optional(),
+      role: z.enum(["worker", "staff", "admin", "owner", "応援"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
       employmentType: z.enum(["月給", "日給", "時給", "実習生"]).optional(),
     }))
