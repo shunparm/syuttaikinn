@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, and, gte, lte } from "drizzle-orm";
 import ExcelJS from "exceljs";
-import { router, publicProcedure } from "../_core/trpc";
+import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { attendanceRecords, employeeMaster, siteMaster } from "../../drizzle/schema";
 import { toJSTDateStr } from "../utils/time";
@@ -223,7 +223,7 @@ async function calcMonthly(year: number, month: number, employeeId?: number) {
 // ─── ルーター ────────────────────────────────────────────────────
 export const kyuyoRouter = router({
   // 月次給与計算
-  getMonthly: publicProcedure
+  getMonthly: adminProcedure
     .input(z.object({
       year:       z.number().int().min(2000).max(2100),
       month:      z.number().int().min(1).max(12),
@@ -239,7 +239,7 @@ export const kyuyoRouter = router({
   //         G:有給日数 H:基本給支給額 I:残業手当 J:手当合計 K:総支給額
   //         L:健康保険 M:厚生年金 N:雇用保険 O:所得税 P:控除後支給額
   //         Q:住民税 R:友愛会費 S:立替金 T:手取金額
-  exportExcel: publicProcedure
+  exportExcel: adminProcedure
     .input(z.object({
       year:       z.number().int().min(2000).max(2100),
       month:      z.number().int().min(1).max(12),

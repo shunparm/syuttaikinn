@@ -279,7 +279,8 @@ function buildDiarySheet(
     const rowNum = 8 + day;
     if (day > totalDays) continue;
 
-    const dateObj = new Date(year, month - 1, day);
+    // ExcelJSはDateをUTC基準でシリアル値化するため、実行環境TZに依存しないUTC深夜0時で生成
+    const dateObj = new Date(Date.UTC(year, month - 1, day));
     const aCell = ws.getRow(rowNum).getCell("A");
     aCell.value = dateObj;
     aCell.numFmt = "yyyy/m/d";

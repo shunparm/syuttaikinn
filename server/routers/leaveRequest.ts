@@ -113,6 +113,32 @@ export const leaveRequestRouter = router({
         .limit(1);
       if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "申請が見つかりません" });
       if (rows[0].status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "この申請は既に処理済みです" });
+
+      // 有給休暇の場合は先にExcel管理簿へ書き込む。
+      // 失敗時はエラーを返して承認自体を行わない（DBとExcelの乖離を防ぐ）。
+      // 書き込みは冪等なので、後続のDB更新が失敗して再承認してもExcelが二重記入されることはない。
+      if (rows[0].leaveType === "paid_leave") {
+        const empRows = await db
+          .select({ name: employeeMaster.name })
+          .from(employeeMaster)
+          .where(eq(employeeMaster.id, rows[0].employeeId))
+          .limit(1);
+        if (empRows.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "申請者の従業員情報が見つかりません" });
+        }
+        const result = await writePaidLeaveToExcel({
+          employeeName: empRows[0].name,
+          leaveDate: rows[0].requestDate,
+        });
+        if (!result.success) {
+          console.error(`[paid-leave-excel] 書き込み失敗: ${result.error}`);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `有給管理簿への書き込みに失敗したため承認を中止しました。${result.error}`,
+          });
+        }
+      }
+
       const now = iso(new Date());
       await db
         .update(leaveRequests)
@@ -125,24 +151,6 @@ export const leaveRequestRouter = router({
           updatedAt: now,
         })
         .where(eq(leaveRequests.id, input.id));
-
-      // 有給休暇の場合はExcel管理簿に書き込む
-      if (rows[0].leaveType === "paid_leave") {
-        const empRows = await db
-          .select({ name: employeeMaster.name })
-          .from(employeeMaster)
-          .where(eq(employeeMaster.id, rows[0].employeeId))
-          .limit(1);
-        if (empRows.length > 0) {
-          const result = await writePaidLeaveToExcel({
-            employeeName: empRows[0].name,
-            leaveDate: rows[0].requestDate,
-          });
-          if (!result.success) {
-            console.error(`[paid-leave-excel] 書き込み失敗: ${result.error}`);
-          }
-        }
-      }
 
       return { success: true };
     }),
