@@ -90,6 +90,46 @@ export function registerAuthRoutes(app: Express) {
     res.json({ success: true });
   });
 
+  // 社長のブックマーク一発ログイン: GET /api/auth/shacho-login?key=XXXX
+  // OWNER_QUICK_LOGIN_KEY が未設定なら常に403（機能無効）。
+  // キー一致時は owner ロールの在籍社員としてログインし、現場配置ページへ直行する。
+  app.get("/api/auth/shacho-login", async (req: Request, res: Response) => {
+    const key = req.query.key;
+
+    if (!ENV.ownerQuickLoginKey || typeof key !== "string" || key !== ENV.ownerQuickLoginKey) {
+      res.status(403).json({ error: "アクセスが許可されていません" });
+      return;
+    }
+
+    const dbInstance = getDb();
+    const rows = await dbInstance
+      .select()
+      .from(employeeMaster)
+      .where(and(eq(employeeMaster.role, "owner"), eq(employeeMaster.status, "active")))
+      .limit(1);
+
+    const employee = rows[0];
+    if (!employee) {
+      res.status(404).json({ error: "社長アカウントが登録されていません。作業員管理で役割「社長」の従業員を登録してください。" });
+      return;
+    }
+
+    const openId = `admin-${employee.employeeId}`;
+    await db.upsertUser({
+      openId,
+      name: employee.name,
+      email: null,
+      loginMethod: "employee",
+      role: "owner",
+      lastSignedIn: new Date().toISOString(),
+    });
+
+    const sessionToken = await createSessionToken(openId, employee.name);
+    const cookieOptions = getSessionCookieOptions(req);
+    res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+    res.redirect("/admin/site-assignments");
+  });
+
   // ログアウト
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     const cookieOptions = getSessionCookieOptions(req);
