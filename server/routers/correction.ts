@@ -141,10 +141,10 @@ export const correctionRouter = router({
     .query(async ({ input }) => {
       const db = getDb();
       const showAll = input?.showAllProcessed ?? false;
-      // 処理済みは直近3ヶ月のみ（showAll=trueなら全件）
-      const threeMonthsAgo = new Date();
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-      const sinceStr = threeMonthsAgo.toISOString();
+      // 処理済みは直近1ヶ月のみ表示（1ヶ月超はcorrectionCleanupが毎日削除する）
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      const sinceStr = oneMonthAgo.toISOString();
 
       const allRows = await db.select({
         id: correctionRequests.id, attendanceRecordId: correctionRequests.attendanceRecordId,

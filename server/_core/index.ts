@@ -8,6 +8,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { initDb } from "../db";
 import { startNotificationScheduler } from "../notificationScheduler";
+import { startCorrectionCleanupScheduler } from "../correctionCleanup";
 import { handleDiaryExcelDownload } from "../routes/diaryExcel";
 import { handlePaidLeaveExcelDownload, seedPaidLeaveExcel } from "../routes/paidLeaveExcel";
 import { requireAdminExpress } from "./expressAuth";
@@ -32,6 +33,13 @@ async function startServer() {
     startNotificationScheduler();
   } catch (e) {
     console.error("[Push] Failed to start notification scheduler:", e);
+  }
+
+  // 訂正申請の保持期間管理（起動時＋毎日3:00 JSTに1ヶ月超の処理済みを削除）
+  try {
+    startCorrectionCleanupScheduler();
+  } catch (e) {
+    console.error("[correction-cleanup] Failed to start scheduler:", e);
   }
 
   const app = express();
