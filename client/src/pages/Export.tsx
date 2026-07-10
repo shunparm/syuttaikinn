@@ -316,6 +316,7 @@ export default function Export() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-56 p-2" align="start">
+                  {/* 「すべての作業員」は上部に固定 */}
                   <button
                     onClick={selectAll}
                     className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted text-sm"
@@ -326,18 +327,25 @@ export default function Export() {
                     すべての作業員
                   </button>
                   <div className="my-1 h-px bg-border" />
-                  {employees?.map((emp) => (
-                    <label
-                      key={emp.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
-                    >
-                      <Checkbox
-                        checked={selectedEmployeeIds.includes(emp.id)}
-                        onCheckedChange={() => toggleEmployee(emp.id)}
-                      />
-                      {emp.name}
-                    </label>
-                  ))}
+                  {/* 人数が増えても画面からはみ出さないよう、リスト部分をスクロール化
+                      （max-heightはポップオーバーが画面内に収まる高さに自動追従） */}
+                  <div
+                    className="overflow-y-auto overscroll-contain"
+                    style={{ maxHeight: "min(50vh, calc(var(--radix-popover-content-available-height, 60vh) - 5rem))" }}
+                  >
+                    {employees?.map((emp) => (
+                      <label
+                        key={emp.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={selectedEmployeeIds.includes(emp.id)}
+                          onCheckedChange={() => toggleEmployee(emp.id)}
+                        />
+                        {emp.name}
+                      </label>
+                    ))}
+                  </div>
                 </PopoverContent>
               </Popover>
             </div>
