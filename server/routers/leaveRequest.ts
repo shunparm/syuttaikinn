@@ -1,10 +1,11 @@
 import { z } from "zod";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { leaveRequests, employeeMaster } from "../../drizzle/schema";
 import { writePaidLeaveToExcel } from "../routes/paidLeaveExcel";
+import { leaveCutoffDateStr } from "../leaveCleanup";
 
 const iso = (d: Date) => d.toISOString();
 
@@ -73,6 +74,8 @@ export const leaveRequestRouter = router({
   // 管理者: 全申請一覧
   listAll: adminProcedure.query(async () => {
     const db = getDb();
+    // 希望日が2ヶ月以内のもの＋保留中を表示（2ヶ月超はleaveCleanupが毎日削除する）
+    const cutoff = leaveCutoffDateStr();
     return db
       .select({
         id: leaveRequests.id,
@@ -92,6 +95,7 @@ export const leaveRequestRouter = router({
       })
       .from(leaveRequests)
       .innerJoin(employeeMaster, eq(leaveRequests.employeeId, employeeMaster.id))
+      .where(or(eq(leaveRequests.status, "pending"), gte(leaveRequests.requestDate, cutoff)))
       .orderBy(desc(leaveRequests.createdAt));
   }),
 
