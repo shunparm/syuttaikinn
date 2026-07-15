@@ -241,6 +241,21 @@ export async function initDb() {
       `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS resident_tax INTEGER DEFAULT 0`,
       `ALTER TABLE employee_master ADD COLUMN IF NOT EXISTS welfare_fee INTEGER DEFAULT 0`,
     ];
+    // 所定勤務時間カラム（初回追加時のみ、現行の勤務形態で初期値をシード。
+    // 以降の変更は作業員管理画面から行うため、二度と上書きしない）
+    try {
+      const colCheck = await client.query(`
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'employee_master' AND column_name = 'standard_work_minutes'
+      `);
+      if (colCheck.rows.length === 0) {
+        await client.query(`ALTER TABLE employee_master ADD COLUMN standard_work_minutes INTEGER DEFAULT 480`);
+        await client.query(`UPDATE employee_master SET standard_work_minutes = 300 WHERE name IN ('菊川裕美', '濱津紀子')`);
+        await client.query(`UPDATE employee_master SET standard_work_minutes = 420 WHERE name IN ('山田ゆかり', '畑野浩次')`);
+        console.log('initDb: standard_work_minutes カラムを追加し初期値をシードしました');
+      }
+    } catch (e: any) { console.log('initDb standard_work_minutes (skip):', e.message); }
+
     for (const sql of empAlters) {
       try { await client.query(sql); } catch (e: any) { console.log('initDb emp alter (skip):', e.message); }
     }
