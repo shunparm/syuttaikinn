@@ -381,6 +381,7 @@ export const exportRouter = router({
           clockInTime: attendanceRecords.clockInTime, clockOutTime: attendanceRecords.clockOutTime,
           workingMinutes: attendanceRecords.workingMinutes,
           employeeName: employeeMaster.name, employeeCode: employeeMaster.employeeId,
+          standardWorkMinutes: employeeMaster.standardWorkMinutes,
           siteName: siteMaster.siteName, siteCode: siteMaster.siteId,
         }).from(attendanceRecords)
           .innerJoin(employeeMaster, eq(attendanceRecords.employeeId, employeeMaster.id))
@@ -400,6 +401,15 @@ export const exportRouter = router({
       const calcOvertime = (wm: number | null | undefined): string => {
         if (!wm || wm <= 480) return "0";
         return ((wm - 480) / 60).toFixed(2).replace(/\.?0+$/, "");
+      };
+
+      // 遅刻早退計算: 実働が所定勤務時間に満たない分をマイナスの時間で返す
+      // 実働が取得できない日（打刻漏れ・勤務進行中）は誤ったマイナスを防ぐため 0
+      const calcLateEarly = (wm: number | null | undefined, standardMinutes: number | null | undefined): string => {
+        if (wm === null || wm === undefined || !Number.isFinite(wm)) return "0";
+        const std = standardMinutes ?? 480;
+        if (wm >= std) return "0";
+        return ((wm - std) / 60).toFixed(2).replace(/\.?0+$/, "");
       };
 
       // 時刻を HH:MM（JST）で返す
@@ -442,7 +452,7 @@ export const exportRouter = router({
             fmtTime(r.clockInTime),   // H: 出勤時刻
             fmtTime(r.clockOutTime),  // I: 退勤時刻
             calcOvertime(wm),          // J: 残業時間(h)
-            "0",                       // K: 遅刻早退(h)
+            calcLateEarly(wm, r.standardWorkMinutes), // K: 遅刻早退(h)（所定未満はマイナス）
             "",                        // L: 備考
             fmtHours(wm),             // M: 実働時間(h)
           ],

@@ -25,6 +25,7 @@ export const masterRouter = router({
       role: z.enum(["worker", "staff", "admin", "owner", "応援"]).default("worker"),
       status: z.enum(["active", "inactive"]).default("active"),
       employmentType: z.enum(["月給", "日給", "時給", "実習生"]).default("日給"),
+      standardWorkMinutes: z.number().int().min(60).max(720).default(480),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -40,7 +41,7 @@ export const masterRouter = router({
       if (inactiveExisting.length > 0) {
         // 復活（UPDATE）
         await db.update(employeeMaster)
-          .set({ name: rest.name, nameKana: rest.nameKana, role: rest.role, status: "active", ...(passwordHash ? { passwordHash } : {}), updatedAt: now })
+          .set({ name: rest.name, nameKana: rest.nameKana, role: rest.role, status: "active", standardWorkMinutes: rest.standardWorkMinutes, ...(passwordHash ? { passwordHash } : {}), updatedAt: now })
           .where(eq(employeeMaster.id, inactiveExisting[0].id));
       } else {
         // 通常INSERT
@@ -60,6 +61,7 @@ export const masterRouter = router({
       role: z.enum(["worker", "staff", "admin", "owner", "応援"]).optional(),
       status: z.enum(["active", "inactive"]).optional(),
       employmentType: z.enum(["月給", "日給", "時給", "実習生"]).optional(),
+      standardWorkMinutes: z.number().int().min(60).max(720).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = getDb();

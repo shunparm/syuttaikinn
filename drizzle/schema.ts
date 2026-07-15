@@ -28,6 +28,8 @@ export const employeeMaster = pgTable("employee_master", {
   isActive: boolean("is_active").default(true),
   // 雇用区分: '月給' | '日給' | '時給' | '実習生'
   employmentType: text("employment_type").default("日給"),
+  // 所定勤務時間（分）: パート300 / 時短420 / フルタイム480 など
+  standardWorkMinutes: integer("standard_work_minutes").default(480),
   // 給与単価
   monthlySalary: integer("monthly_salary").default(0),
   dailyWage: integer("daily_wage").default(0),

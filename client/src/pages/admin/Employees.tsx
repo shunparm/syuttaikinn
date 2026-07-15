@@ -35,6 +35,7 @@ type Employee = {
   role: string;
   status: string;
   employmentType?: string | null;
+  standardWorkMinutes?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,8 +50,8 @@ export default function AdminEmployees() {
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
   const [page, setPage] = useState(1);
-  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; role: RoleValue; employmentType: EmploymentTypeValue; password: string }>({
-    employeeId: "", name: "", nameKana: "", role: "worker", employmentType: "日給", password: "",
+  const [form, setForm] = useState<{ employeeId: string; name: string; nameKana: string; role: RoleValue; employmentType: EmploymentTypeValue; standardWorkMinutes: number; password: string }>({
+    employeeId: "", name: "", nameKana: "", role: "worker", employmentType: "日給", standardWorkMinutes: 480, password: "",
   });
 
   // 削除確認ダイアログ用
@@ -103,7 +104,7 @@ export default function AdminEmployees() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ employeeId: "", name: "", nameKana: "", role: "worker", employmentType: "日給", password: "" });
+    setForm({ employeeId: "", name: "", nameKana: "", role: "worker", employmentType: "日給", standardWorkMinutes: 480, password: "" });
     setDialogOpen(true);
   };
 
@@ -115,6 +116,7 @@ export default function AdminEmployees() {
       nameKana: emp.nameKana ?? "",
       role: (["worker", "staff", "admin", "owner", "応援"].includes(emp.role) ? emp.role : "worker") as RoleValue,
       employmentType: (["月給", "日給", "時給", "実習生"].includes(emp.employmentType ?? "") ? emp.employmentType : "日給") as EmploymentTypeValue,
+      standardWorkMinutes: emp.standardWorkMinutes ?? 480,
       password: "",
     });
     setDialogOpen(true);
@@ -138,6 +140,7 @@ export default function AdminEmployees() {
         nameKana: form.nameKana || undefined,
         role: form.role,
         employmentType: form.employmentType,
+        standardWorkMinutes: form.standardWorkMinutes,
         password: form.password || undefined,
       });
     } else {
@@ -147,6 +150,7 @@ export default function AdminEmployees() {
         nameKana: form.nameKana || undefined,
         role: form.role,
         employmentType: form.employmentType,
+        standardWorkMinutes: form.standardWorkMinutes,
         password: form.password || undefined,
       });
     }
@@ -386,6 +390,24 @@ export default function AdminEmployees() {
                   <SelectItem value="実習生">実習生</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">所定勤務時間</Label>
+              <Select
+                value={String(form.standardWorkMinutes)}
+                onValueChange={(v) => setForm({ ...form, standardWorkMinutes: Number(v) })}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="300">5時間（パート）</SelectItem>
+                  <SelectItem value="360">6時間</SelectItem>
+                  <SelectItem value="420">7時間</SelectItem>
+                  <SelectItem value="480">8時間（フルタイム）</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">給与計算用CSVの遅刻早退(h)の自動計算に使われます</p>
             </div>
             {["admin", "owner"].includes(form.role) && (
               <div className="space-y-2">
